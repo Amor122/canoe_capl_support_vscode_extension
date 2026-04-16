@@ -103,6 +103,9 @@ export function activate(context: vscode.ExtensionContext) {
             
             const word = document.getText(range);
             
+            const upperWord = word.toUpperCase();
+            const lowerWord = word.toLowerCase();
+            
             if (CAPL_FUNCTIONS[word]) {
                 return new vscode.Hover({
                     language: 'capl',
@@ -110,10 +113,31 @@ export function activate(context: vscode.ExtensionContext) {
                 }, range);
             }
             
+            if (CAPL_FUNCTIONS[lowerWord] && word !== lowerWord) {
+                return new vscode.Hover({
+                    language: 'capl',
+                    value: `**${word}**\n\n${CAPL_FUNCTIONS[lowerWord]}`
+                }, range);
+            }
+            
+            if (CAPL_FUNCTIONS[upperWord] && word !== upperWord) {
+                return new vscode.Hover({
+                    language: 'capl',
+                    value: `**${word}**\n\n${CAPL_FUNCTIONS[upperWord]}`
+                }, range);
+            }
+            
             if (CAPL_KEYWORDS[word]) {
                 return new vscode.Hover({
                     language: 'capl',
                     value: `**${word}**\n\n${CAPL_KEYWORDS[word]}`
+                }, range);
+            }
+            
+            if (CAPL_KEYWORDS[lowerWord] && word !== lowerWord) {
+                return new vscode.Hover({
+                    language: 'capl',
+                    value: `**${word}**\n\n${CAPL_KEYWORDS[lowerWord]}`
                 }, range);
             }
             
@@ -324,7 +348,7 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     const completionProvider = vscode.languages.registerCompletionItemProvider(docSelector, {
-        provideCompletionItems(document, position) {
+        provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): vscode.CompletionItem[] {
             const items: vscode.CompletionItem[] = [];
             const userVars = getUserDefinedVariables(document);
             const symbols = getDocumentSymbols(document);
@@ -334,12 +358,27 @@ export function activate(context: vscode.ExtensionContext) {
                 item.detail = CAPL_FUNCTIONS[func].split('\n')[0];
                 item.insertText = new vscode.SnippetString(func + '($0)');
                 items.push(item);
+                
+                const upperFunc = func.toUpperCase();
+                if (func !== upperFunc) {
+                    const itemUpper = new vscode.CompletionItem(upperFunc, vscode.CompletionItemKind.Function);
+                    itemUpper.detail = CAPL_FUNCTIONS[func].split('\n')[0];
+                    itemUpper.insertText = new vscode.SnippetString(upperFunc + '($0)');
+                    items.push(itemUpper);
+                }
             }
             
             for (const kw of Object.keys(CAPL_KEYWORDS)) {
                 const item = new vscode.CompletionItem(kw, vscode.CompletionItemKind.Keyword);
                 item.detail = CAPL_KEYWORDS[kw].split('\n')[0];
                 items.push(item);
+                
+                const upperKw = kw.toUpperCase();
+                if (kw !== upperKw) {
+                    const itemUpper = new vscode.CompletionItem(upperKw, vscode.CompletionItemKind.Keyword);
+                    itemUpper.detail = CAPL_KEYWORDS[kw].split('\n')[0];
+                    items.push(itemUpper);
+                }
             }
             
             for (const v of userVars) {

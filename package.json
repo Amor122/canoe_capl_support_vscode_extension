@@ -2,7 +2,7 @@
   "name": "vector-capl",
   "displayName": "Vector CAPL",
   "description": "CAPL language support for VSCode with syntax highlighting, hover docs, code completion, jump to definition, find references, and error analysis",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "vector-capl",
   "engines": {
     "vscode": "^1.115.0"

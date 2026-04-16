@@ -119,16 +119,36 @@ function activate(context) {
             if (!range)
                 return null;
             const word = document.getText(range);
+            const upperWord = word.toUpperCase();
+            const lowerWord = word.toLowerCase();
             if (caplData_1.CAPL_FUNCTIONS[word]) {
                 return new vscode.Hover({
                     language: 'capl',
                     value: `**${word}**\n\n${caplData_1.CAPL_FUNCTIONS[word]}`
                 }, range);
             }
+            if (caplData_1.CAPL_FUNCTIONS[lowerWord] && word !== lowerWord) {
+                return new vscode.Hover({
+                    language: 'capl',
+                    value: `**${word}**\n\n${caplData_1.CAPL_FUNCTIONS[lowerWord]}`
+                }, range);
+            }
+            if (caplData_1.CAPL_FUNCTIONS[upperWord] && word !== upperWord) {
+                return new vscode.Hover({
+                    language: 'capl',
+                    value: `**${word}**\n\n${caplData_1.CAPL_FUNCTIONS[upperWord]}`
+                }, range);
+            }
             if (caplData_1.CAPL_KEYWORDS[word]) {
                 return new vscode.Hover({
                     language: 'capl',
                     value: `**${word}**\n\n${caplData_1.CAPL_KEYWORDS[word]}`
+                }, range);
+            }
+            if (caplData_1.CAPL_KEYWORDS[lowerWord] && word !== lowerWord) {
+                return new vscode.Hover({
+                    language: 'capl',
+                    value: `**${word}**\n\n${caplData_1.CAPL_KEYWORDS[lowerWord]}`
                 }, range);
             }
             return null;
@@ -321,11 +341,24 @@ function activate(context) {
                 item.detail = caplData_1.CAPL_FUNCTIONS[func].split('\n')[0];
                 item.insertText = new vscode.SnippetString(func + '($0)');
                 items.push(item);
+                const upperFunc = func.toUpperCase();
+                if (func !== upperFunc) {
+                    const itemUpper = new vscode.CompletionItem(upperFunc, vscode.CompletionItemKind.Function);
+                    itemUpper.detail = caplData_1.CAPL_FUNCTIONS[func].split('\n')[0];
+                    itemUpper.insertText = new vscode.SnippetString(upperFunc + '($0)');
+                    items.push(itemUpper);
+                }
             }
             for (const kw of Object.keys(caplData_1.CAPL_KEYWORDS)) {
                 const item = new vscode.CompletionItem(kw, vscode.CompletionItemKind.Keyword);
                 item.detail = caplData_1.CAPL_KEYWORDS[kw].split('\n')[0];
                 items.push(item);
+                const upperKw = kw.toUpperCase();
+                if (kw !== upperKw) {
+                    const itemUpper = new vscode.CompletionItem(upperKw, vscode.CompletionItemKind.Keyword);
+                    itemUpper.detail = caplData_1.CAPL_KEYWORDS[kw].split('\n')[0];
+                    items.push(itemUpper);
+                }
             }
             for (const v of userVars) {
                 const item = new vscode.CompletionItem(v, vscode.CompletionItemKind.Variable);
