@@ -26,11 +26,13 @@
         ],
         "extensions": [
           ".capl",
-          ".can"
+          ".can",
+          ".cin"
         ],
         "filenamePatterns": [
           "**/*.capl",
-          "**/*.can"
+          "**/*.can",
+          "**/*.cin"
         ],
         "configuration": "./language-configuration.json"
       }
