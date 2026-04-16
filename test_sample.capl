@@ -1,0 +1,25 @@
+/* Test CAPL file for extension verification */
+
+on message *
+{
+  long msgId;
+  msgId = this.id;
+  write("Message ID: %d", msgId);
+}
+
+on key 'a'
+{
+  mstimer t;
+  setTimerCyclic(t, 100, 50);
+  writeLineEx(0, 1, "Timer test");
+}
+
+void testDiagnostics()
+{
+  int x;
+  x = _abs(-5);
+  x = _max(10, 20);
+  x = _round(3.7);
+  writeDbgLvlPrefix(1);
+  setWriteDbgLevel(2);
+}
