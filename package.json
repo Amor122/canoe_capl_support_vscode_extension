@@ -25,12 +25,10 @@
           "capl"
         ],
         "extensions": [
-          ".capl",
           ".can",
           ".cin"
         ],
         "filenamePatterns": [
-          "**/*.capl",
           "**/*.can",
           "**/*.cin"
         ],

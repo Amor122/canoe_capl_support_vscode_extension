@@ -40,7 +40,6 @@ VSCode extension providing comprehensive CAPL (Communication Access Programming 
 
 ## File Extensions
 
-- `.capl` - CAPL source files
 - `.can` - CANoe configuration files  
 - `.cin` - CANoe Include files
 
