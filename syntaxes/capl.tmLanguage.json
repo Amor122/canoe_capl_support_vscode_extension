@@ -2,183 +2,156 @@
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "CAPL",
   "patterns": [
-    {
-      "include": "#comments"
-    },
-    {
-      "include": "#strings"
-    },
-    {
-      "include": "#keywords"
-    },
-    {
-      "include": "#functions"
-    },
-    {
-      "include": "#types"
-    },
-    {
-      "include": "#numbers"
-    },
-    {
-      "include": "#operators"
-    }
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#keywords" },
+    { "include": "#functions" },
+    { "include": "#types" },
+    { "include": "#numbers" },
+    { "include": "#operators" }
   ],
   "repository": {
     "comments": {
       "patterns": [
-        {
-          "name": "comment.line.double-slash.capl",
-          "match": "//.*$"
-        },
-        {
-          "name": "comment.block.capl",
-          "begin": "/\\*",
-          "end": "\\*/"
-        }
+        { "name": "comment.line.double-slash", "match": "//.*" }
       ]
     },
     "strings": {
       "patterns": [
-        {
-          "name": "string.quoted.double.capl",
-          "begin": "\"",
-          "end": "\"",
-          "patterns": [
-            {
-              "name": "constant.escape.capl",
-              "match": "\\\\."
-            }
-          ]
-        },
-        {
-          "name": "string.quoted.single.capl",
-          "begin": "'",
-          "end": "'"
-        }
+        { "name": "string.quoted.double", "begin": "\"", "end": "\"" },
+        { "name": "string.quoted.single", "begin": "'", "end": "'" }
       ]
     },
     "keywords": {
       "patterns": [
-        {
-          "name": "keyword.control.capl",
-          "match": "\\b(if|else|switch|case|default|while|do|for|break|continue|return|goto)\\b"
-        },
-        {
-          "name": "keyword.control.capl",
-          "match": "\\bon\\b"
-        },
-        {
-          "name": "keyword.control.capl",
-          "match": "\\bon\\w+\\b"
-        },
-        {
-          "name": "storage.type.capl",
-          "match": "\\b(const|volatile|extern|static|void|int|long|float|double|char|byte|word|dword|int64|qword|boolean|enumerates|struct|array)\\b"
-        },
-        {
-          "name": "storage.type.capl",
-          "match": "\\b(message|signal|timer|envvar|msglist|signallist|sysvar|node)\\b"
-        }
+        { "name": "keyword", "match": "\\bif\\b" },
+        { "name": "keyword", "match": "\\belse\\b" },
+        { "name": "keyword", "match": "\\bwhile\\b" },
+        { "name": "keyword", "match": "\\bfor\\b" },
+        { "name": "keyword", "match": "\\bswitch\\b" },
+        { "name": "keyword", "match": "\\bcase\\b" },
+        { "name": "keyword", "match": "\\bdefault\\b" },
+        { "name": "keyword", "match": "\\breturn\\b" },
+        { "name": "keyword", "match": "\\bbreak\\b" },
+        { "name": "keyword", "match": "\\bcontinue\\b" },
+        { "name": "keyword", "match": "\\bdo\\b" },
+        { "name": "keyword", "match": "\\bgoto\\b" },
+        { "name": "keyword", "match": "\\bconst\\b" },
+        { "name": "keyword", "match": "\\bstatic\\b" },
+        { "name": "keyword", "match": "\\bextern\\b" },
+        { "name": "keyword", "match": "\\bvolatile\\b" },
+        { "name": "keyword", "match": "\\bvoid\\b" },
+        { "name": "keyword", "match": "\\benum\\b" },
+        { "name": "keyword", "match": "\\bstruct\\b" },
+        { "name": "keyword", "match": "\\binclude\\b" },
+        { "name": "keyword", "match": "\\bdefine\\b" },
+        { "name": "keyword", "match": "\\bifdef\\b" },
+        { "name": "keyword", "match": "\\bifndef\\b" },
+        { "name": "keyword", "match": "\\bendif\\b" }
       ]
     },
     "functions": {
       "patterns": [
-        {
-          "name": "support.function.capl",
-          "match": "\\b(write|writeLineEx|writeDbgLvlPrefix|setWriteDbgLevel|output|elnl|elprintf|elprintfex)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(setTimer|setTimerCyclic|setTimerSync|cancelTimer|mstimer)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(putValue|getValue|setSignal|getSignal|setWrite|getWrite)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(_max|_min|_round|_pow|_sqrt|_abs|_sign)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(sqrt|abs|sin|cos|tan|asin|acos|atan|atan2|log|log10|exp|pow|floor|ceil|round)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(strlen|strcpy|strcat|strcmp|strncmp|sprintf|sscanf|atoi|atof|atol|tolower|toupper|substr|strstr)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(memset|memcpy|memcpy_off|memcmp|memmove)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(filemap|fileclose|fileread|filewrite|filegetc|fileputc|filesetpos|filegetpos)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(logOpen|logClose|logReset|logWrite)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(openPanel|closePanel|enableControl|SetControlProperty|SetControlVisibility)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(TestStepPass|TestStepFail|TestStatus|testWaitForSignalMatch|testWaitForSignalInRange|testWaitForDiagResponse)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(ILSetOperationMode|ILCanTxOff|ILCanTxOn|ILLoad|ILUnload)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(J1939ILSetSignal|J1939ILGetAddress|J1939ILSetMsgEvent|J1939ILSetAddress)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(sysGetVariableLong|sysSetVariableLong|sysGetVariableData|sysSetVariableData)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(diagRequest|diagResponse|diagSendRequest|diagGetLastResponse|diagIsFreeBusy)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(canReset|canInit|canOffline|canOnline|canSetBtr|canSetFilt|canSetMsgBuf)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(linReset|linInit|linSetup|linSendHead|linSendMsg|linGetResponse)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(xcpConnect|xcpDisconnect|xcpUpload|xcpDownload|xcpGetCalPage|xcpSetCalPage)\\b"
-        },
-        {
-          "name": "support.function.capl",
-          "match": "\\b(ethernetPacket|OnTcpReceive|OnUdpReceive|IP_Endpoint)\\b"
-        }
+        { "name": "support.function", "match": "\\bwrite\\b" },
+        { "name": "support.function", "match": "\\bwriteLineEx\\b" },
+        { "name": "support.function", "match": "\\bwriteDbgLvlPrefix\\b" },
+        { "name": "support.function", "match": "\\bsetWriteDbgLevel\\b" },
+        { "name": "support.function", "match": "\\boutput\\b" },
+        { "name": "support.function", "match": "\\belnl\\b" },
+        { "name": "support.function", "match": "\\belprintf\\b" },
+        { "name": "support.function", "match": "\\bputValue\\b" },
+        { "name": "support.function", "match": "\\bgetValue\\b" },
+        { "name": "support.function", "match": "\\bsetSignal\\b" },
+        { "name": "support.function", "match": "\\bgetSignal\\b" },
+        { "name": "support.function", "match": "\\bsetTimer\\b" },
+        { "name": "support.function", "match": "\\bsetTimerCyclic\\b" },
+        { "name": "support.function", "match": "\\bsetTimerSync\\b" },
+        { "name": "support.function", "match": "\\bcancelTimer\\b" },
+        { "name": "support.function", "match": "\\belapsed\\b" },
+        { "name": "support.function", "match": "\\bisTimerActive\\b" },
+        { "name": "support.function", "match": "\\b_max\\b" },
+        { "name": "support.function", "match": "\\b_min\\b" },
+        { "name": "support.function", "match": "\\b_round\\b" },
+        { "name": "support.function", "match": "\\b_pow\\b" },
+        { "name": "support.function", "match": "\\b_sqrt\\b" },
+        { "name": "support.function", "match": "\\b_abs\\b" },
+        { "name": "support.function", "match": "\\b_sign\\b" },
+        { "name": "support.function", "match": "\\bsqrt\\b" },
+        { "name": "support.function", "match": "\\babs\\b" },
+        { "name": "support.function", "match": "\\bsin\\b|\\bcos\\b|\\btan\\b" },
+        { "name": "support.function", "match": "\\bmemcpy\\b" },
+        { "name": "support.function", "match": "\\bmemset\\b" },
+        { "name": "support.function", "match": "\\bmemcmp\\b" },
+        { "name": "support.function", "match": "\\bmemmove\\b" },
+        { "name": "support.function", "match": "\\bstrlen\\b" },
+        { "name": "support.function", "match": "\\bstrcpy\\b" },
+        { "name": "support.function", "match": "\\bstrcat\\b" },
+        { "name": "support.function", "match": "\\bstrcmp\\b" },
+        { "name": "support.function", "match": "\\bsprintf\\b" },
+        { "name": "support.function", "match": "\\bsscanf\\b" },
+        { "name": "support.function", "match": "\\batoi\\b|\\batof\\b" },
+        { "name": "support.function", "match": "\\bTestStepPass\\b" },
+        { "name": "support.function", "match": "\\bTestStepFail\\b" },
+        { "name": "support.function", "match": "\\bTestStatus\\b" },
+        { "name": "support.function", "match": "\\bsysvarInt\\b" },
+        { "name": "support.function", "match": "\\bsysvarFloat\\b" },
+        { "name": "support.function", "match": "\\bsysvarString\\b" },
+        { "name": "support.function", "match": "\\bsysGetVariableLong\\b" },
+        { "name": "support.function", "match": "\\bsysSetVariableLong\\b" },
+        { "name": "support.function", "match": "\\bILSetOperationMode\\b" },
+        { "name": "support.function", "match": "\\bILCanTxOff\\b" },
+        { "name": "support.function", "match": "\\bILCanTxOn\\b" },
+        { "name": "support.function", "match": "\\blin_wakeup\\b" },
+        { "name": "support.function", "match": "\\blin_gotosleep\\b" },
+        { "name": "support.function", "match": "\\blinReset\\b" },
+        { "name": "support.function", "match": "\\blinInit\\b" },
+        { "name": "support.function", "match": "\\bcanReset\\b" },
+        { "name": "support.function", "match": "\\bcanInit\\b" },
+        { "name": "support.function", "match": "\\bcanOffline\\b" },
+        { "name": "support.function", "match": "\\bcanOnline\\b" },
+        { "name": "support.function", "match": "\\bxcpConnect\\b" },
+        { "name": "support.function", "match": "\\bxcpDisconnect\\b" },
+        { "name": "support.function", "match": "\\bxcpUpload\\b" },
+        { "name": "support.function", "match": "\\bxcpDownload\\b" },
+        { "name": "support.function", "match": "\\bdiagRequest\\b" },
+        { "name": "support.function", "match": "\\bdiagSendRequest\\b" },
+        { "name": "support.function", "match": "\\bdiagGetLastResponse\\b" }
       ]
     },
     "types": {
-      "patterns": []
+      "patterns": [
+        { "name": "storage.type", "match": "\\bbyte\\b" },
+        { "name": "storage.type", "match": "\\bword\\b" },
+        { "name": "storage.type", "match": "\\bdword\\b" },
+        { "name": "storage.type", "match": "\\bqword\\b" },
+        { "name": "storage.type", "match": "\\bint\\b" },
+        { "name": "storage.type", "match": "\\blong\\b" },
+        { "name": "storage.type", "match": "\\bint64\\b" },
+        { "name": "storage.type", "match": "\\bfloat\\b" },
+        { "name": "storage.type", "match": "\\bdouble\\b" },
+        { "name": "storage.type", "match": "\\bchar\\b" },
+        { "name": "storage.type", "match": "\\bboolean\\b" },
+        { "name": "storage.type", "match": "\\btimer\\b" },
+        { "name": "storage.type", "match": "\\bTimer\\b" },
+        { "name": "storage.type", "match": "\\bmsTimer\\b" },
+        { "name": "storage.type", "match": "\\bmstimer\\b" },
+        { "name": "storage.type", "match": "\\bmessage\\b" },
+        { "name": "storage.type", "match": "\\bsignal\\b" },
+        { "name": "storage.type", "match": "\\benvvar\\b" },
+        { "name": "storage.type", "match": "\\bpdu\\b" },
+        { "name": "storage.type", "match": "\\bsysvar\\b" },
+        { "name": "storage.type", "match": "\\benum\\b" },
+        { "name": "storage.type", "match": "\\bstruct\\b" }
+      ]
     },
     "numbers": {
       "patterns": [
-        {
-          "name": "constant.numeric.capl",
-          "match": "\\b(0x[0-9A-Fa-f]+|[0-9]+\\.?[0-9]*)\\b"
-        }
+        { "name": "constant.numeric", "match": "\\b0x[0-9A-Fa-f]+\\b|\\b[0-9]+\\.?[0-9]*([eE][-+]?[0-9]+)?" }
       ]
     },
     "operators": {
       "patterns": [
-        {
-          "name": "keyword.operator.capl",
-          "match": "(\\+\\+|\\-\\-|==|!=|<=|>=|&&|\\|\\||<<|>>|\\+=|-=|\\*=|/=|%=|&=|\\^=|<<=|>>=)"
-        }
+        { "name": "keyword.operator", "match": "[+\\-*/%=<>!&|^~?:]+" }
       ]
     }
   },
