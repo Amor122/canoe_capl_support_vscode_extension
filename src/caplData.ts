@@ -241,6 +241,7 @@ export const CAPL_FUNCTIONS: Record<string, string> = {
     // Memory Functions
     'memset': 'memset(buffer, value, size);\n\nFills buffer with value.',
     'memcpy': 'memcpy(destination, source, size);\n\nCopies memory area.',
+    'memcpy_off': 'memcpy_off(destination, source, size);\n\nCopies memory area (optimized, assumes no overlap).',
     'memcmp': 'memcmp(buffer1, buffer2, size);\n\nCompares memory areas.',
     'memmove': 'memmove(destination, source, size);\n\nMoves memory (handles overlap).',
     'elcount': 'elcount(array);\n\nReturns number of elements in array.',

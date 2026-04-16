@@ -66,6 +66,10 @@
         },
         {
           "name": "keyword.control.capl",
+          "match": "\\bon\\b"
+        },
+        {
+          "name": "keyword.control.capl",
           "match": "\\bon\\w+\\b"
         },
         {
@@ -82,11 +86,19 @@
       "patterns": [
         {
           "name": "support.function.capl",
-          "match": "\\b(output|write|elnl|elprintf|elprintfex|setTimer|setTimerSync|cancelTimer|putValue|getValue|setWrite|getSignal|setSignal)\\b"
+          "match": "\\b(write|writeLineEx|writeDbgLvlPrefix|setWriteDbgLevel|output|elnl|elprintf|elprintfex)\\b"
         },
         {
           "name": "support.function.capl",
-          "match": "\\b(testcase|testfunction|testwait|testassert|teststep|testreport|testconfig)\\b"
+          "match": "\\b(setTimer|setTimerCyclic|setTimerSync|cancelTimer|mstimer)\\b"
+        },
+        {
+          "name": "support.function.capl",
+          "match": "\\b(putValue|getValue|setSignal|getSignal|setWrite|getWrite)\\b"
+        },
+        {
+          "name": "support.function.capl",
+          "match": "\\b(_max|_min|_round|_pow|_sqrt|_abs|_sign)\\b"
         },
         {
           "name": "support.function.capl",
@@ -94,11 +106,11 @@
         },
         {
           "name": "support.function.capl",
-          "match": "\\b(strlen|strcpy|strcat|strcmp|strncmp|sprintf|sscanf|atoi|atof|atol|tolower|toupper)\\b"
+          "match": "\\b(strlen|strcpy|strcat|strcmp|strncmp|sprintf|sscanf|atoi|atof|atol|tolower|toupper|substr|strstr)\\b"
         },
         {
           "name": "support.function.capl",
-          "match": "\\b(memset|memcpy|memcmp|memmove)\\b"
+          "match": "\\b(memset|memcpy|memcpy_off|memcmp|memmove)\\b"
         },
         {
           "name": "support.function.capl",
@@ -111,6 +123,42 @@
         {
           "name": "support.function.capl",
           "match": "\\b(openPanel|closePanel|enableControl|SetControlProperty|SetControlVisibility)\\b"
+        },
+        {
+          "name": "support.function.capl",
+          "match": "\\b(TestStepPass|TestStepFail|TestStatus|testWaitForSignalMatch|testWaitForSignalInRange|testWaitForDiagResponse)\\b"
+        },
+        {
+          "name": "support.function.capl",
+          "match": "\\b(ILSetOperationMode|ILCanTxOff|ILCanTxOn|ILLoad|ILUnload)\\b"
+        },
+        {
+          "name": "support.function.capl",
+          "match": "\\b(J1939ILSetSignal|J1939ILGetAddress|J1939ILSetMsgEvent|J1939ILSetAddress)\\b"
+        },
+        {
+          "name": "support.function.capl",
+          "match": "\\b(sysGetVariableLong|sysSetVariableLong|sysGetVariableData|sysSetVariableData)\\b"
+        },
+        {
+          "name": "support.function.capl",
+          "match": "\\b(diagRequest|diagResponse|diagSendRequest|diagGetLastResponse|diagIsFreeBusy)\\b"
+        },
+        {
+          "name": "support.function.capl",
+          "match": "\\b(canReset|canInit|canOffline|canOnline|canSetBtr|canSetFilt|canSetMsgBuf)\\b"
+        },
+        {
+          "name": "support.function.capl",
+          "match": "\\b(linReset|linInit|linSetup|linSendHead|linSendMsg|linGetResponse)\\b"
+        },
+        {
+          "name": "support.function.capl",
+          "match": "\\b(xcpConnect|xcpDisconnect|xcpUpload|xcpDownload|xcpGetCalPage|xcpSetCalPage)\\b"
+        },
+        {
+          "name": "support.function.capl",
+          "match": "\\b(ethernetPacket|OnTcpReceive|OnUdpReceive|IP_Endpoint)\\b"
         }
       ]
     },
