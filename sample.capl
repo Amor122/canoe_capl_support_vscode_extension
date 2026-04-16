@@ -1,0 +1,109 @@
+/* Sample CAPL File for Testing */
+
+includes
+{
+  
+}
+
+/* Variables declaration */
+int gCounter;
+message 0x100 msg;
+timer tmrTest;
+
+/* Event handler for measurement start */
+onstart()
+{
+  write("Measurement started");
+  gCounter = 0;
+}
+
+/* Event handler for timer */
+ontimer tmrTest
+{
+  write("Timer expired, counter: %d", gCounter);
+  gCounter = gCounter + 1;
+  setTimer(tmrTest, 1000);
+}
+
+/* Event handler for specific message */
+onmessage msg
+{
+  int signalValue;
+  
+  signalValue = getSignal(this, 0);
+  write("Received message, signal value: %d", signalValue);
+  
+  putValue(Signal, signalValue + 1);
+}
+
+/* Event handler for key press */
+onkey KEY_ESCAPE
+{
+  write("Escape key pressed");
+}
+
+/* Main function */
+void TestFunction()
+{
+  int i;
+  float fValue;
+  char buffer[100];
+  
+  /* If-else statement */
+  if (gCounter > 10)
+  {
+    write("Counter is greater than 10");
+  }
+  else if (gCounter > 5)
+  {
+    write("Counter is greater than 5");
+  }
+  else
+  {
+    write("Counter is 5 or less");
+  }
+  
+  /* For loop */
+  for (i = 0; i < 10; i++)
+  {
+    write("Loop iteration: %d", i);
+  }
+  
+  /* While loop */
+  while (gCounter < 20)
+  {
+    gCounter++;
+  }
+  
+  /* Test case */
+  testcase("Test basic functionality")
+  {
+    int result;
+    
+    result = sqrt(16.0);
+    testassert(result == 4.0, "Square root test failed");
+    
+    result = abs(-5);
+    testassert(result == 5, "Absolute value test failed");
+  }
+  
+  /* String functions */
+  strcpy(buffer, "Hello CAPL");
+  strlen(buffer);
+  
+  /* Output message */
+  output(msg);
+}
+
+/* Another function with syntax error (missing semicolon) */
+void BrokenFunction()
+{
+  int x
+  x = 5  // Missing semicolons
+}
+
+/* Function with unmatched parenthesis */
+void UnmatchedParen()
+{
+  if (x > 0  // Missing closing parenthesis
+}

@@ -1,0 +1,56 @@
+{
+  "name": "vector-capl",
+  "displayName": "Vector CAPL",
+  "description": "CAPL language support for VS Code with syntax highlighting, hover documentation, and error analysis",
+  "version": "1.0.0",
+  "publisher": "vector-capl",
+  "engines": {
+    "vscode": "^1.115.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -p ./ -w",
+    "vscode:prepublish": "npm run compile"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "capl",
+        "aliases": [
+          "CAPL",
+          "capl"
+        ],
+        "extensions": [
+          ".capl",
+          ".can"
+        ],
+        "filenamePatterns": [
+          "**/*.capl",
+          "**/*.can"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "capl",
+        "scopeName": "source.capl",
+        "path": "./syntaxes/capl.tmLanguage.json"
+      }
+    ],
+    "configuration": "./language-configuration.json"
+  },
+  "activationEvents": [
+    "onLanguage:capl"
+  ],
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/vscode": "^1.115.0",
+    "@vscode/vsce": "^3.9.0",
+    "typescript": "^6.0.2"
+  }
+}
