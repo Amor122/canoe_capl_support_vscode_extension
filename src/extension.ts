@@ -18,10 +18,10 @@ export function activate(context: vscode.ExtensionContext) {
                 }, range);
             }
             
-            if (CAPL_KEYWORDS.includes(word)) {
+            if (CAPL_KEYWORDS[word]) {
                 return new vscode.Hover({
                     language: 'capl',
-                    value: `**${word}**\n\nCAPL keyword`
+                    value: `**${word}**\n\n${CAPL_KEYWORDS[word]}`
                 }, range);
             }
             
@@ -40,8 +40,9 @@ export function activate(context: vscode.ExtensionContext) {
                 items.push(item);
             }
             
-            for (const kw of CAPL_KEYWORDS) {
+            for (const kw of Object.keys(CAPL_KEYWORDS)) {
                 const item = new vscode.CompletionItem(kw, vscode.CompletionItemKind.Keyword);
+                item.detail = CAPL_KEYWORDS[kw].split('\n')[0];
                 items.push(item);
             }
             
@@ -91,7 +92,7 @@ export function activate(context: vscode.ExtensionContext) {
                 const funcCallMatch = trimmed.match(/^\s*(\w+)\s*\(/);
                 if (funcCallMatch) {
                     const funcName = funcCallMatch[1];
-                    if (CAPL_FUNCTIONS[funcName] || CAPL_KEYWORDS.includes(funcName)) {
+                    if (CAPL_FUNCTIONS[funcName] || CAPL_KEYWORDS[funcName]) {
                         return !trimmed.endsWith(';');
                     }
                 }

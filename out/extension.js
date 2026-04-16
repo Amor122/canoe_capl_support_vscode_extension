@@ -51,10 +51,10 @@ function activate(context) {
                     value: `**${word}**\n\n${caplData_1.CAPL_FUNCTIONS[word]}`
                 }, range);
             }
-            if (caplData_1.CAPL_KEYWORDS.includes(word)) {
+            if (caplData_1.CAPL_KEYWORDS[word]) {
                 return new vscode.Hover({
                     language: 'capl',
-                    value: `**${word}**\n\nCAPL keyword`
+                    value: `**${word}**\n\n${caplData_1.CAPL_KEYWORDS[word]}`
                 }, range);
             }
             return null;
@@ -69,8 +69,9 @@ function activate(context) {
                 item.insertText = new vscode.SnippetString(func + '($0)');
                 items.push(item);
             }
-            for (const kw of caplData_1.CAPL_KEYWORDS) {
+            for (const kw of Object.keys(caplData_1.CAPL_KEYWORDS)) {
                 const item = new vscode.CompletionItem(kw, vscode.CompletionItemKind.Keyword);
+                item.detail = caplData_1.CAPL_KEYWORDS[kw].split('\n')[0];
                 items.push(item);
             }
             return items;
@@ -119,7 +120,7 @@ function activate(context) {
                 const funcCallMatch = trimmed.match(/^\s*(\w+)\s*\(/);
                 if (funcCallMatch) {
                     const funcName = funcCallMatch[1];
-                    if (caplData_1.CAPL_FUNCTIONS[funcName] || caplData_1.CAPL_KEYWORDS.includes(funcName)) {
+                    if (caplData_1.CAPL_FUNCTIONS[funcName] || caplData_1.CAPL_KEYWORDS[funcName]) {
                         return !trimmed.endsWith(';');
                     }
                 }
