@@ -1,44 +1,80 @@
 # Vector CAPL Language Support
 
-VSCode extension providing CAPL (Communication Access Programming Language) support with syntax highlighting, hover documentation, and syntax error analysis.
+VSCode extension providing comprehensive CAPL (Communication Access Programming Language) support for Vector CANoe/CANalyzer.
 
 ## Features
 
-- **Syntax Highlighting**: Full grammar support for CAPL language keywords, functions, types, comments, and strings
-- **Hover Documentation**: Hover over CAPL functions and keywords to see their descriptions
-- **Auto-completion**: IntelliSense for CAPL functions and keywords
-- **Syntax Error Analysis**: Real-time diagnostics for common syntax errors like missing semicolons, unmatched braces/parentheses
+### Syntax Highlighting
+- Keywords: if, else, while, for, switch, case, return, const, static, void, enum, struct, on, include, define
+- Types: byte, word, dword, qword, int, long, int64, float, double, char, boolean, timer, Timer, msTimer, mstimer, message, signal, envvar, pdu, sysvar
+- Functions: write, writeLineEx, putValue, getValue, setTimer, setTimerCyclic, memcpy, memset, strlen, strcpy, TestStepPass, TestStepFail, and 5000+ more
+- Comments and strings support
 
-## Installation
+### Hover Documentation  
+- Hover over functions and keywords to see descriptions
+- Includes 5000+ CAPL functions from Vector CANoe Help
 
-1. Clone this repository
-2. Run `npm install`
-3. Run `npm run compile`
-4. Open the project in VSCode and press F5 to launch the extension
+### Auto-completion
+- IntelliSense for CAPL functions and keywords
+- User-defined variables and functions
+- Variables from `variables { }` blocks
+
+### Jump to Definition
+- Ctrl+Click or F12 to jump to variable/function definitions
+- Supports variables defined in `variables { }` blocks
+- Supports functions defined after usage
+- Cross-file navigation (all open .can/.cin files)
+
+### Find References
+- Shift+F12 to find all references to a variable or function
+- Searches across all open CAPL files
+
+### Include Links
+- Ctrl+Click on #include paths to open included files
+
+### Syntax Error Analysis
+- Real-time diagnostics for:
+  - Missing semicolons
+  - Unmatched braces and parentheses
+  - Comments at end of lines handled correctly
 
 ## File Extensions
 
-The extension recognizes files with `.capl` and `.can` extensions.
+- `.capl` - CAPL source files
+- `.can` - CANoe configuration files  
+- `.cin` - CANoe Include files
 
-## CAPL Functions Included
+## Installation
 
-- Output functions: `output`, `write`, `elnl`, `elprintf`, `elprintfex`
-- Timer functions: `setTimer`, `setTimerSync`, `cancelTimer`, `timer`, `elapsed`
-- Value access: `putValue`, `getValue`, `setWrite`, `getSignal`, `setSignal`
-- Message handlers: `onmessage`, `ontimer`, `onstart`, `onstop`, `onerror`, `onkey`
-- Test functions: `testcase`, `testfunction`, `testwait`, `testassert`, `teststep`
-- Math functions: `sqrt`, `abs`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `log`, `exp`, `pow`
-- String functions: `strlen`, `strcpy`, `strcat`, `strcmp`, `sprintf`, `atoi`, `atof`
-- Memory functions: `memset`, `memcpy`, `memcmp`, `memmove`
-- File functions: `filemap`, `fileclose`, `fileread`, `filewrite`
-- Logging functions: `logOpen`, `logClose`, `logReset`, `logWrite`
-- Hardware functions: `xlSetLED`, `xlAcquireLED`, `InterfaceStatus`
-- Panel functions: `openPanel`, `closePanel`, `enableControl`, `SetControlProperty`
-- And many more...
+1. Install from VSCode Marketplace (search for "Vector CAPL")
+2. Or: Install the VSIX file from releases
 
-## Configuration
+## Usage
 
-The extension uses the built-in VSCode theming for syntax colors. You can customize colors in your VSCode settings.
+1. Open any `.can`, `.capl`, or `.cin` file in VSCode
+2. For cross-file features, add the project folder to workspace:
+   - File → Add Folder to Workspace
+   - Select the CANoe Sample Configurations folder
+
+## Keyboard Shortcuts
+
+| Feature | Shortcut |
+|---------|---------|
+| Jump to Definition | Ctrl+Click or F12 |
+| Find References | Shift+F12 |
+| Hover Documentation | Hover over function |
+
+## Data Sources
+
+This extension was built by analyzing:
+- Vector CANoe Help 19.5.44 documentation
+- Sample Configurations from CANoe 19.5.44
+
+Total CAPL functions documented: 5000+
+
+## Version
+
+1.0.0
 
 ## License
 
