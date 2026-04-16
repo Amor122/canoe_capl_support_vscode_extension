@@ -60,9 +60,30 @@ function activate(context) {
             return null;
         }
     });
+    const getUserDefinedVariables = (document) => {
+        const text = document.getText();
+        const variables = [];
+        const varPatterns = [
+            /\b(int|long|float|double|char|byte|word|dword|qword|boolean|timer|mstimer|message|signal|envvar)\s+(\w+)\s*[=;,\[]/g,
+            /\b(byte|word|dword|qword)\s+(\w+)\s*\[[^\]]*\]\s*[=;]/g,
+            /\bstruct\s+\w+\s*\{[^}]*\}\s*(\w+)\s*[=;]/g,
+            /\benum\s+(\w+)\s*[=;]/g,
+        ];
+        for (const pattern of varPatterns) {
+            let match;
+            while ((match = pattern.exec(text)) !== null) {
+                const varName = match[match.length - 1];
+                if (!variables.includes(varName) && !varName.match(/^(int|long|float|double|char|byte|word|dword|qword|boolean|timer|mstimer|message|signal|envvar|void|struct|enum)$/)) {
+                    variables.push(varName);
+                }
+            }
+        }
+        return variables;
+    };
     const completionProvider = vscode.languages.registerCompletionItemProvider(docSelector, {
         provideCompletionItems(document, position) {
             const items = [];
+            const userVars = getUserDefinedVariables(document);
             for (const func of Object.keys(caplData_1.CAPL_FUNCTIONS)) {
                 const item = new vscode.CompletionItem(func, vscode.CompletionItemKind.Function);
                 item.detail = caplData_1.CAPL_FUNCTIONS[func].split('\n')[0];
@@ -74,9 +95,14 @@ function activate(context) {
                 item.detail = caplData_1.CAPL_KEYWORDS[kw].split('\n')[0];
                 items.push(item);
             }
+            for (const v of userVars) {
+                const item = new vscode.CompletionItem(v, vscode.CompletionItemKind.Variable);
+                item.detail = 'user defined variable';
+                items.push(item);
+            }
             return items;
         }
-    }, '(');
+    }, '');
     const diagnosticCollection = vscode.languages.createDiagnosticCollection('capl');
     const updateDiagnostics = (document) => {
         if (document.languageId !== 'capl')
