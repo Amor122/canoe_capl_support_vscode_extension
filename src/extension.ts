@@ -416,10 +416,12 @@ export function activate(context: vscode.ExtensionContext) {
             }
             
             if (/^\s*\w+\s*=\s*[^=].*;\s*$/.test(trimmed)) return false;
-            if (/^\s*(int|long|float|double|char|byte|word|dword|qword|boolean)\s+\w+\s*=/.test(trimmed)) {
-                return !trimmed.endsWith(';');
-            }
+            const hasSemicolon = (str: string) => str.trim().endsWith(';');
             
+            if (/^\s*(int|long|float|double|char|byte|word|dword|qword|boolean)\s+\w+\s*=/.test(trimmed)) {
+                return !hasSemicolon(trimmed);
+            }
+
             return false;
         };
         
@@ -440,7 +442,7 @@ export function activate(context: vscode.ExtensionContext) {
                 if (char === ')') parenCount--;
             }
             
-            const trimmed = line.trim();
+            const trimmed = codePart.trim();
             
             if (!trimmed) return;
             if (trimmed.startsWith('//')) return;
@@ -450,7 +452,10 @@ export function activate(context: vscode.ExtensionContext) {
             if (/^(if|else|while|for|switch)\s*\(/.test(trimmed)) return;
             if (/^(if|else|while|for)\s*\{/.test(trimmed)) return;
             if (trimmed === '}' || trimmed === '{') return;
-            if (trimmed.endsWith(';') || trimmed.endsWith(',') || trimmed.endsWith(':')) return;
+            
+            const endsWithValid = trimmed.endsWith(';') || trimmed.endsWith(',') || trimmed.endsWith(':') || trimmed.endsWith('{') || trimmed.endsWith('}');
+            if (endsWithValid) return;
+            
             if (/^(case|default)\s+/.test(trimmed)) return;
             
             if (isStatementNeedingSemicolon(line)) {
