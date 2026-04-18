@@ -107,12 +107,22 @@ export function activate(context: vscode.ExtensionContext) {
             
             const funcKey = Object.keys(CAPL_FUNCTIONS).find(k => k.toLowerCase() === lowerWord);
             if (funcKey) {
-                return new vscode.Hover(new vscode.MarkdownString(CAPL_FUNCTIONS[funcKey]), range);
+                const raw = CAPL_FUNCTIONS[funcKey];
+                const doc = raw.replace(/\n/g, '<br/>');
+                const md = new vscode.MarkdownString(doc);
+                md.isTrusted = true;
+                md.supportHtml = true;
+                return new vscode.Hover(md, range);
             }
             
             const kwKey = Object.keys(CAPL_KEYWORDS).find(k => k.toLowerCase() === lowerWord);
             if (kwKey) {
-                return new vscode.Hover(new vscode.MarkdownString(CAPL_KEYWORDS[kwKey]), range);
+                const raw = CAPL_KEYWORDS[kwKey];
+                const doc = raw.replace(/\n/g, '<br/>');
+                const md = new vscode.MarkdownString(doc);
+                md.isTrusted = true;
+                md.supportHtml = true;
+                return new vscode.Hover(md, range);
             }
             
             return null;
