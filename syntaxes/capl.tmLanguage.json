@@ -4,6 +4,7 @@
   "patterns": [
     { "include": "#comments" },
     { "include": "#strings" },
+    { "include": "#userfunctions" },
     { "include": "#keywords" },
     { "include": "#functions" },
     { "include": "#types" },
@@ -11,6 +12,12 @@
     { "include": "#operators" }
   ],
   "repository": {
+    "userfunctions": {
+      "patterns": [
+        { "name": "entity.name.function", "match": "^(dword|word|byte|int|long|float|double|char|void)\\s+\\w+\\s*\\(" },
+        { "name": "entity.name.function", "match": "^on\\s+\\w+\\s*\\(" }
+      ]
+    },
     "comments": {
       "patterns": [
         { "name": "comment.line.double-slash", "match": "//.*" }

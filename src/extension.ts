@@ -20,6 +20,7 @@ const collectSymbols = (document: vscode.TextDocument): SymbolLocation[] => {
 
     let inVariablesBlock = false;
     let braceCount = 0;
+    let currentFunction = '';
 
     lines.forEach((line, index) => {
         const lineNum = index + 1;
@@ -106,13 +107,39 @@ const collectSymbols = (document: vscode.TextDocument): SymbolLocation[] => {
             });
         }
 
+        const paramTypeMatch = trimmed.match(/\b(int|long|float|double|char|byte|word|dword|qword)\s+(\w+)(?:\s*[\[\],)]|$)/g);
+        if (paramTypeMatch && currentFunction) {
+            for (const m of paramTypeMatch) {
+                const pm = m.match(/\b(int|long|float|double|char|byte|word|dword|qword)\s+(\w+)/);
+                if (pm) {
+                    symbols.push({
+                        name: pm[2],
+                        type: 'variable',
+                        range: new vscode.Range(index, 0, index, line.length),
+                        file: fileName + '|' + currentFunction
+                    });
+                }
+            }
+        }
+
         const funcMatch = trimmed.match(/^(void|int|long|float|double|char|byte|word|dword|qword|boolean)\s+(\w+)\s*\(/);
         if (funcMatch && !trimmed.includes('{')) {
+            currentFunction = funcMatch[2];
             symbols.push({
                 name: funcMatch[2],
                 type: 'function',
                 range: new vscode.Range(index, 0, index, line.length),
                 file: fileName
+            });
+        }
+
+        const localVarMatch = trimmed.match(/^\s*(int|long|float|double|char|byte|word|dword|qword)\s+(\w+)\s*=/);
+        if (localVarMatch && currentFunction) {
+            symbols.push({
+                name: localVarMatch[2],
+                type: 'variable',
+                range: new vscode.Range(index, 0, index, line.length),
+                file: fileName + '|' + currentFunction
             });
         }
 
@@ -243,45 +270,57 @@ export function activate(context: vscode.ExtensionContext) {
         }
     };
 
-    const findAllReferences = (word: string, exceptUri?: vscode.Uri): SymbolLocation[] => {
+    const findAllReferences = (word: string, exceptUri?: vscode.Uri, currentFunc?: string): SymbolLocation[] => {
         const refs: SymbolLocation[] = [];
         
-        if (exceptUri) {
-            ALL_SYMBOLS.forEach((symbols, uriStr) => {
-                if (uriStr === exceptUri.toString()) return;
-                for (const sym of symbols) {
-                    if (sym.name === word) {
-                        refs.push(sym);
-                    }
-                }
-            });
-        } else {
-            ALL_SYMBOLS.forEach((symbols, uriStr) => {
-                for (const sym of symbols) {
-                    if (sym.name === word) {
-                        refs.push(sym);
-                    }
-                }
-            });
-        }
-        
-        return refs;
-    };
-
-    const findDefinition = (word: string, exceptUri?: vscode.Uri): SymbolLocation | null => {
-        let found: SymbolLocation | null = null;
-        
         ALL_SYMBOLS.forEach((symbols, uriStr) => {
-            if (exceptUri && uriStr === exceptUri.toString()) return;
+            if (exceptUri && uriStr === exceptUri.toString()) {
+                for (const sym of symbols) {
+                    if (sym.name === word) {
+                        if (sym.file.includes('|')) {
+                            const funcScope = sym.file.split('|')[1];
+                            if (!currentFunc || funcScope === currentFunc) {
+                                refs.push(sym);
+                            }
+                        } else {
+                            refs.push(sym);
+                        }
+                    }
+                }
+                return;
+            }
             for (const sym of symbols) {
                 if (sym.name === word) {
-                    found = sym;
-                    return;
+                    refs.push(sym);
                 }
             }
         });
         
-        return found;
+        return refs;
+    };
+
+    const findDefinition = (word: string, exceptUri?: vscode.Uri, currentFunc?: string): SymbolLocation | null => {
+        let localFound: SymbolLocation | null = null;
+        let globalFound: SymbolLocation | null = null;
+        
+        ALL_SYMBOLS.forEach((symbols, uriStr) => {
+            for (const sym of symbols) {
+                if (sym.name === word) {
+                    if (sym.file.includes('|')) {
+                        const funcScope = sym.file.split('|')[1];
+                        if (currentFunc && funcScope === currentFunc) {
+                            localFound = sym;
+                        }
+                    } else if (exceptUri && uriStr !== exceptUri.toString()) {
+                        globalFound = sym;
+                    } else if (!exceptUri) {
+                        globalFound = sym;
+                    }
+                }
+            }
+        });
+        
+        return localFound || globalFound;
     };
 
     const definitionProvider = vscode.languages.registerDefinitionProvider(docSelector, {
@@ -291,16 +330,32 @@ export function activate(context: vscode.ExtensionContext) {
             
             const word = document.getText(range);
             
-            const localSymbols = getDocumentSymbols(document);
-            for (const symbol of localSymbols) {
-                if (symbol.name === word) {
-                    return new vscode.Location(document.uri, symbol.range);
+            const lineNum = position.line;
+            const currentLine = document.lineAt(lineNum).text;
+            let insideFunc = '';
+            for (let i = lineNum - 1; i >= 0; i--) {
+                const line = document.lineAt(i).text.trim();
+                const funcMatch = line.match(/^(void|int|long|float|double|char|byte|word|dword|qword)\s+(\w+)\s*\(/);
+                if (funcMatch) {
+                    insideFunc = funcMatch[2];
+                    break;
+                }
+const onMatch = line.match(/^on\s+(\w+)/);
+                if (onMatch) {
+                    insideFunc = 'on ' + onMatch[1];
+                    break;
                 }
             }
             
-            const found = findDefinition(word, document.uri);
-            if (found) {
-                return new vscode.Location(vscode.Uri.file(found.file), found.range);
+            const localSymbols = getDocumentSymbols(document);
+            for (const symbol of localSymbols) {
+                if (symbol.name === word) {
+                    if (symbol.file.includes('|')) {
+                        const funcScope = symbol.file.split('|')[1];
+                        if (funcScope && funcScope !== insideFunc) continue;
+                    }
+                    return new vscode.Location(document.uri, symbol.range);
+                }
             }
             
             return null;
@@ -314,6 +369,22 @@ export function activate(context: vscode.ExtensionContext) {
             
             const word = document.getText(range);
             const refs: vscode.Location[] = [];
+            
+            const lineNum = position.line;
+            let currentRefFunc = '';
+            for (let i = lineNum - 1; i >= 0; i--) {
+                const line = document.lineAt(i).text.trim();
+                const funcMatch = line.match(/^(void|int|long|float|double|char|byte|word|dword|qword)\s+(\w+)\s*\(/);
+                if (funcMatch) {
+                    currentRefFunc = funcMatch[2];
+                    break;
+                }
+                const onMatch = line.match(/^on\s+(\w+)/);
+                if (onMatch) {
+                    currentRefFunc = 'on ' + onMatch[1];
+                    break;
+                }
+            }
             
             const text = document.getText();
             const lines = text.split('\n');
@@ -330,7 +401,7 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             });
             
-            const allRefs = findAllReferences(word, document.uri);
+            const allRefs = findAllReferences(word, document.uri, currentRefFunc);
             for (const ref of allRefs) {
                 try {
                     refs.push(new vscode.Location(vscode.Uri.file(ref.file), ref.range));
