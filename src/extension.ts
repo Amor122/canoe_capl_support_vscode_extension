@@ -189,6 +189,41 @@ export function activate(context: vscode.ExtensionContext) {
             const upperWord = word.toUpperCase();
             const lowerWord = word.toLowerCase();
             
+            const localSymbols = getDocumentSymbols(document);
+            const userFuncs = localSymbols.filter(s => s.type === 'function' && s.name.toLowerCase() === lowerWord);
+            
+            if (userFuncs.length > 0) {
+                const docLines = document.getText().split('\n');
+                const sf = userFuncs[0];
+                const funcLineIdx = sf.range.start.line;
+                const funcLine = docLines[funcLineIdx].trim();
+                
+                let comment = '';
+                let foundComment = false;
+                for (let i = funcLineIdx - 1; i >= 0; i--) {
+                    const line = docLines[i].trim();
+                    if (line.includes('/*')) {
+                        foundComment = true;
+                        comment = line + '\n' + comment;
+                        if (line.includes('*/')) break;
+                    } else if (foundComment) {
+                        comment = line + '\n' + comment;
+                        if (line.includes('*/')) break;
+                    } else if (line.length > 0) {
+                        break;
+                    }
+                }
+                
+                let hover = `**Function**: ${sf.name}\n\n\`\`\`capl\n${funcLine}\n\`\`\``;
+                if (comment) {
+                    hover += '\n\n' + comment.replace(/\/\*|\*\//g, '').trim();
+                }
+                
+                const md = new vscode.MarkdownString(hover);
+                md.isTrusted = true;
+                return new vscode.Hover(md, range);
+            }
+            
             const typeKey = Object.keys(CAPL_TYPES).find(k => k.toLowerCase() === lowerWord);
             if (typeKey) {
                 const md = new vscode.MarkdownString(CAPL_TYPES[typeKey]);
