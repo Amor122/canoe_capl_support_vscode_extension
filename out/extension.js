@@ -88,6 +88,15 @@ const collectSymbols = (document) => {
                     file: fileName
                 });
             }
+            const structVarMatch = trimmed.match(/\bstruct\s+(\w+)\s+(\w+)/);
+            if (structVarMatch) {
+                symbols.push({
+                    name: structVarMatch[2],
+                    type: 'variable',
+                    range: new vscode.Range(index, 0, index, line.length),
+                    file: fileName
+                });
+            }
             const arrMatch = trimmed.match(/^\s*byte\s+(\w+)\[/);
             if (arrMatch) {
                 symbols.push({
@@ -125,8 +134,8 @@ const collectSymbols = (document) => {
                 file: fileName
             });
         }
-        const paramTypeMatch = trimmed.match(/\b(int|long|float|double|char|byte|word|dword|qword)\s+(\w+)(?:\s*[\[\],)]|$)/g);
-        if (paramTypeMatch && currentFunction) {
+        const paramTypeMatch = trimmed.match(/\b(int|long|float|double|char|byte|word|dword|qword)\s+(\w+)/g);
+        if (paramTypeMatch && currentFunction && trimmed.includes('(')) {
             for (const m of paramTypeMatch) {
                 const pm = m.match(/\b(int|long|float|double|char|byte|word|dword|qword)\s+(\w+)/);
                 if (pm) {
@@ -148,6 +157,18 @@ const collectSymbols = (document) => {
                 range: new vscode.Range(index, 0, index, line.length),
                 file: fileName
             });
+            const parts = trimmed.split(/[\(\),]/);
+            for (const part of parts) {
+                const varMatch = part.match(/\b(int|long|float|double|char|byte|word|dword|qword)\s+(\w+)/);
+                if (varMatch && varMatch[2] !== currentFunction) {
+                    symbols.push({
+                        name: varMatch[2],
+                        type: 'variable',
+                        range: new vscode.Range(index, 0, index, line.length),
+                        file: fileName + '|' + currentFunction
+                    });
+                }
+            }
         }
         const localVarMatch = trimmed.match(/^\s*(int|long|float|double|char|byte|word|dword|qword)\s+(\w+)\s*=/);
         if (localVarMatch && currentFunction) {
@@ -341,10 +362,10 @@ function activate(context) {
             }
             const localSymbols = getDocumentSymbols(document);
             for (const symbol of localSymbols) {
-                if (symbol.name === word) {
+                if (symbol.name.toLowerCase() === word.toLowerCase()) {
                     if (symbol.file.includes('|')) {
                         const funcScope = symbol.file.split('|')[1];
-                        if (funcScope && funcScope !== insideFunc)
+                        if (insideFunc && funcScope !== insideFunc)
                             continue;
                     }
                     return new vscode.Location(document.uri, symbol.range);
