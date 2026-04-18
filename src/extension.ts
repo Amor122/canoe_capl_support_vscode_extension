@@ -372,7 +372,8 @@ const onMatch = line.match(/^on\s+(\w+)/);
             const localSymbols = getDocumentSymbols(document);
             for (const symbol of localSymbols) {
                 if (symbol.name.toLowerCase() === word.toLowerCase()) {
-                    if (symbol.file.includes('|')) {
+                    const isScoped = symbol.file.includes('|');
+                    if (isScoped) {
                         const funcScope = symbol.file.split('|')[1];
                         if (insideFunc && funcScope !== insideFunc) continue;
                     }
