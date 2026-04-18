@@ -16,8 +16,7 @@ function cleanStr(str) {
         .replace(/'/g, '')
         .replace(/`/g, '')
         .replace(/[^\x20-\x7E]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .substring(0, 250);
+        .replace(/\s+/g, ' ');
 }
 
 function formatDoc(func) {
@@ -26,7 +25,7 @@ function formatDoc(func) {
     if (func.description) doc = doc + 'Description: ' + cleanStr(func.description) + '\n';
     if (func.parameters && func.parameters !== 'Parameters —') doc = doc + 'Parameters: ' + cleanStr(func.parameters) + '\n';
     if (func.returnValues && func.returnValues !== 'Return Values —') doc = doc + 'Returns: ' + cleanStr(func.returnValues);
-    doc = doc.replace(/'/g, '').substring(0, 2000);
+    doc = doc.replace(/'/g, '');
     return doc.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/"/g, '\\"');
 }
 

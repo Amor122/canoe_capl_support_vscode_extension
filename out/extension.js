@@ -39,6 +39,82 @@ const vscode = __importStar(require("vscode"));
 const caplData_1 = require("./caplData");
 const docSelector = { language: 'capl', scheme: 'file' };
 const ALL_SYMBOLS = new Map();
+const TYPE_MAP = {
+    'byte': ['byte', 'int', 'long', 'word', 'dword', 'qword'],
+    'int': ['int', 'long', 'dword', 'word', 'byte', 'qword'],
+    'long': ['long', 'dword', 'int', 'qword', 'word', 'byte'],
+    'word': ['word', 'dword', 'int', 'long', 'byte', 'qword'],
+    'dword': ['dword', 'long', 'qword', 'word', 'int', 'byte'],
+    'qword': ['qword', 'dword', 'long', 'word', 'int', 'byte'],
+    'float': ['float', 'double'],
+    'double': ['double', 'float'],
+    'char': ['char', 'byte'],
+    'boolean': ['boolean', 'byte', 'int', 'long'],
+};
+const getExpectedTypes = (paramType) => {
+    const t = paramType.toLowerCase().replace(/\s*(array|\[\])?$/, '').trim();
+    return TYPE_MAP[t] || [t];
+};
+const isTypeCompatible = (actualType, expectedTypes) => {
+    const a = actualType.toLowerCase().replace(/\s*(array|\[\])?$/, '').trim();
+    const actualCompat = TYPE_MAP[a] || [a];
+    for (const act of actualCompat) {
+        for (const exp of expectedTypes) {
+            if (act === exp)
+                return true;
+        }
+    }
+    return false;
+};
+const getVariableType = (varName, document, currentLine) => {
+    const text = document.getText();
+    const lines = text.split('\n');
+    let searchLimit = currentLine > 0 ? currentLine - 1 : lines.length;
+    for (let i = 0; i < searchLimit; i++) {
+        const line = lines[i].trim();
+        const funcMatch = line.match(/^(void|int|long|float|double|char|byte|word|dword|qword)\s+(\w+)\s*\(([^)]*)\)/i);
+        if (funcMatch) {
+            const params = funcMatch[3].split(',');
+            for (const p of params) {
+                const pm = p.match(/\b(dword|word|byte|int|long|float|double|qword|boolean|char)\s+(\w+)/i);
+                if (pm && pm[2].toLowerCase() === varName.toLowerCase()) {
+                    return pm[1].toLowerCase();
+                }
+            }
+            continue;
+        }
+        const varDecl = line.match(/^\s*(dword|word|byte|int|long|float|double|qword|boolean)\s+(\w+)\s*[=;,\[]/i);
+        if (varDecl && varDecl[2].toLowerCase() === varName.toLowerCase()) {
+            return varDecl[1].toLowerCase();
+        }
+        const varAssign = line.match(/^\s*(dword|word|byte|int|long|float|double|qword|boolean)\s+(\w+)\s*=/i);
+        if (varAssign && varAssign[2].toLowerCase() === varName.toLowerCase()) {
+            return varAssign[1].toLowerCase();
+        }
+    }
+    return '';
+};
+const getFunctionParams = (syntaxLine, argCount) => {
+    const afterSyntax = syntaxLine.replace(/^Syntax:\s*/i, '');
+    const formParts = afterSyntax.split(/\/\/\s*form\s*\d+/i);
+    for (const form of formParts) {
+        const trimmed = form.trim();
+        if (!trimmed.includes('('))
+            continue;
+        const pm = trimmed.match(/\(([^)]*)\)/);
+        if (pm) {
+            const fp = pm[1].split(',').filter(p => p.trim());
+            if (fp.length === argCount) {
+                return fp;
+            }
+            if (fp.length > argCount && fp.some(p => p.includes('...'))) {
+                return fp;
+            }
+        }
+    }
+    const firstPm = formParts[0]?.trim().match(/\(([^)]*)\)/);
+    return firstPm ? firstPm[1].split(',').filter(p => p.trim()) : [];
+};
 const collectSymbols = (document) => {
     const symbols = [];
     const text = document.getText();
@@ -638,27 +714,48 @@ function activate(context) {
                 if (funcData) {
                     const syntaxMatchPart = funcData.split('\n').find(l => l.startsWith('Syntax:'));
                     if (syntaxMatchPart) {
-                        const paramMatch = syntaxMatchPart.match(/\(([^)]*)\)/);
-                        if (paramMatch) {
-                            let params = paramMatch[1].split(',').filter(p => p.trim());
-                            const actualArgs = callMatch[2] ? callMatch[2].split(',').filter(a => a.trim()) : [];
-                            const isVariadic = params.some(p => p.includes('...'));
-                            if (isVariadic) {
-                                params = params.filter(p => p.trim() && !p.includes('...'));
-                            }
-                            if (actualArgs.length !== params.length || (params.length === 0 && actualArgs.length > 0)) {
-                                const msg = actualArgs.length > params.length
-                                    ? `Function '${funcName}' expects ${params.length} params (got ${actualArgs.length})`
-                                    : (actualArgs.length < params.length
-                                        ? (isVariadic
-                                            ? `Function '${funcName}' expects ${params.length}+ params (got ${actualArgs.length})`
-                                            : `Function '${funcName}' expects ${params.length} params (got ${actualArgs.length})`)
-                                        : `Function '${funcName}' requires 0 params (got ${actualArgs.length})`);
-                                diagnostics.push({
-                                    message: msg,
-                                    range: new vscode.Range(lineNum - 1, 0, lineNum - 1, line.length),
-                                    severity: vscode.DiagnosticSeverity.Warning
-                                });
+                        const actualArgs = callMatch[2] ? callMatch[2].split(',').filter(a => a.trim()) : [];
+                        let params = getFunctionParams(syntaxMatchPart, actualArgs.length);
+                        const isVariadic = params.some(p => p.includes('...'));
+                        if (isVariadic) {
+                            params = params.filter(p => p.trim() && !p.includes('...'));
+                        }
+                        if (actualArgs.length !== params.length || (params.length === 0 && actualArgs.length > 0)) {
+                            const msg = actualArgs.length > params.length
+                                ? `Function '${funcName}' expects ${params.length} params (got ${actualArgs.length})`
+                                : (actualArgs.length < params.length
+                                    ? (isVariadic
+                                        ? `Function '${funcName}' expects ${params.length}+ params (got ${actualArgs.length})`
+                                        : `Function '${funcName}' expects ${params.length} params (got ${actualArgs.length})`)
+                                    : `Function '${funcName}' requires 0 params (got ${actualArgs.length})`);
+                            diagnostics.push({
+                                message: msg,
+                                range: new vscode.Range(lineNum - 1, 0, lineNum - 1, line.length),
+                                severity: vscode.DiagnosticSeverity.Warning
+                            });
+                        }
+                        for (let i = 0; i < Math.min(actualArgs.length, params.length); i++) {
+                            const arg = actualArgs[i].trim();
+                            const fullExp = params[i].trim();
+                            const expTypeMatch = fullExp.match(/^\s*(dword|word|byte|int|long|float|double|qword|boolean|char)\b/i);
+                            const expTypeRaw = expTypeMatch ? expTypeMatch[1].toLowerCase() : fullExp.replace(/\[\].*$/, '').trim().split(/\s/)[0];
+                            const expTypes = getExpectedTypes(expTypeRaw);
+                            if (/^[a-zA-Z_]\w*$/.test(arg)) {
+                                const vType = getVariableType(arg, document, lineNum);
+                                if (!vType) {
+                                    diagnostics.push({
+                                        message: `Undefined variable '${arg}'`,
+                                        range: new vscode.Range(lineNum - 1, 0, lineNum - 1, line.length),
+                                        severity: vscode.DiagnosticSeverity.Error
+                                    });
+                                }
+                                else if (!isTypeCompatible(vType, expTypes)) {
+                                    diagnostics.push({
+                                        message: `Parameter ${i + 1} type mismatch: expects ${expTypeRaw}, got '${vType}'`,
+                                        range: new vscode.Range(lineNum - 1, 0, lineNum - 1, line.length),
+                                        severity: vscode.DiagnosticSeverity.Warning
+                                    });
+                                }
                             }
                         }
                     }
