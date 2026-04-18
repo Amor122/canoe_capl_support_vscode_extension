@@ -50,7 +50,7 @@ VSCode extension providing comprehensive CAPL (Communication Access Programming 
 
 ## Usage
 
-1. Open any `.can`, `.capl`, or `.cin` file in VSCode
+1. Open any `.can`, or `.cin` file in VSCode
 2. For cross-file features, add the project folder to workspace:
    - File → Add Folder to Workspace
    - Select the CANoe Sample Configurations folder
@@ -73,7 +73,26 @@ Total CAPL functions documented: 5000+
 
 ## Version
 
-1.0.0
+1.0.2
+
+## Changelog
+
+### 1.0.2
+- Fixed variable parsing in on timer handlers
+- Added enum and struct type definitions
+- Improved hover priority (types → functions → keywords)
+- Fixed const and array variable declarations
+- Fixed brace counting in variables blocks
+- Added support for pointer variables (int * data)
+- Added 5000+ function hover documentation
+
+### 1.0.1
+- Initial release
+- Syntax highlighting
+- Hover documentation
+- Code completion
+- Jump to definition
+- Find references
 
 ## License
 

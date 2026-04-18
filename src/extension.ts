@@ -7,7 +7,7 @@ const ALL_SYMBOLS = new Map<string, SymbolLocation[]>();
 
 interface SymbolLocation {
     name: string;
-    type: 'variable' | 'function' | 'include';
+    type: 'variable' | 'function' | 'include' | 'type';
     range: vscode.Range;
     file: string;
 }
@@ -84,7 +84,28 @@ const collectSymbols = (document: vscode.TextDocument): SymbolLocation[] => {
                     file: fileName
                 });
             }
-}
+            }
+
+        const enumMatch = trimmed.match(/^\s*enum\s+(\w+)/);
+        if (enumMatch) {
+            symbols.push({
+                name: enumMatch[1],
+                type: 'type',
+                range: new vscode.Range(index, 0, index, line.length),
+                file: fileName
+            });
+        }
+
+        const structMatch = trimmed.match(/^\s*struct\s+(\w+)/);
+        if (structMatch) {
+            symbols.push({
+                name: structMatch[1],
+                type: 'type',
+                range: new vscode.Range(index, 0, index, line.length),
+                file: fileName
+            });
+        }
+
         const funcMatch = trimmed.match(/^(void|int|long|float|double|char|byte|word|dword|qword|boolean)\s+(\w+)\s*\(/);
         if (funcMatch && !trimmed.includes('{')) {
             symbols.push({
