@@ -653,6 +653,41 @@ const onMatch = line.match(/^on\s+(\w+)/);
             if (/^(if|else|while|for)\s*\{/.test(trimmed)) return;
             if (trimmed === '}' || trimmed === '{') return;
             
+            const funcCallRegex = /(\w+)\s*\(([^)]*)\)/g;
+            const funcMatches = trimmed.matchAll(funcCallRegex);
+            for (const callMatch of funcMatches) {
+                const funcName = callMatch[1];
+                const funcData = CAPL_FUNCTIONS[funcName] || CAPL_FUNCTIONS[funcName.toLowerCase()] || CAPL_FUNCTIONS[funcName.toUpperCase()];
+                if (funcData) {
+                    const syntaxMatchPart = funcData.split('\n').find(l => l.startsWith('Syntax:'));
+                    if (syntaxMatchPart) {
+                        const paramMatch = syntaxMatchPart.match(/\(([^)]*)\)/);
+                        if (paramMatch) {
+                            let params = paramMatch[1].split(',').filter(p => p.trim());
+                            const actualArgs = callMatch[2] ? callMatch[2].split(',').filter(a => a.trim()) : [];
+                            const isVariadic = params.some(p => p.includes('...'));
+                            if (isVariadic) {
+                                params = params.filter(p => p.trim() && !p.includes('...'));
+                            }
+                            if (actualArgs.length !== params.length || (params.length === 0 && actualArgs.length > 0)) {
+                                const msg = actualArgs.length > params.length 
+                                    ? `Function '${funcName}' expects ${params.length} params (got ${actualArgs.length})`
+                                    : (actualArgs.length < params.length
+                                        ? (isVariadic 
+                                            ? `Function '${funcName}' expects ${params.length}+ params (got ${actualArgs.length})`
+                                            : `Function '${funcName}' expects ${params.length} params (got ${actualArgs.length})`)
+                                        : `Function '${funcName}' requires 0 params (got ${actualArgs.length})`);
+                                diagnostics.push({
+                                    message: msg,
+                                    range: new vscode.Range(lineNum - 1, 0, lineNum - 1, line.length),
+                                    severity: vscode.DiagnosticSeverity.Warning
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            
             const endsWithValid = trimmed.endsWith(';') || trimmed.endsWith(',') || trimmed.endsWith(':') || trimmed.endsWith('{') || trimmed.endsWith('}');
             if (endsWithValid) return;
             
