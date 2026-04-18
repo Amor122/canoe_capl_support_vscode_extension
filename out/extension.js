@@ -387,6 +387,11 @@ function activate(context) {
                     items.push(itemUpper);
                 }
             }
+            for (const t of Object.keys(caplData_1.CAPL_TYPES)) {
+                const item = new vscode.CompletionItem(t, vscode.CompletionItemKind.TypeParameter);
+                item.detail = caplData_1.CAPL_TYPES[t];
+                items.push(item);
+            }
             for (const v of userVars) {
                 const item = new vscode.CompletionItem(v, vscode.CompletionItemKind.Variable);
                 item.detail = 'user defined variable';

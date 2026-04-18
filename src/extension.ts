@@ -407,6 +407,12 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             }
             
+            for (const t of Object.keys(CAPL_TYPES)) {
+                const item = new vscode.CompletionItem(t, vscode.CompletionItemKind.TypeParameter);
+                item.detail = CAPL_TYPES[t];
+                items.push(item);
+            }
+            
             for (const v of userVars) {
                 const item = new vscode.CompletionItem(v, vscode.CompletionItemKind.Variable);
                 item.detail = 'user defined variable';
