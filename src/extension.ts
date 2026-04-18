@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { CAPL_FUNCTIONS, CAPL_KEYWORDS } from './caplData';
+import { CAPL_FUNCTIONS, CAPL_KEYWORDS, CAPL_TYPES } from './caplData';
 
 const docSelector = { language: 'capl', scheme: 'file' };
 
@@ -25,22 +25,23 @@ const collectSymbols = (document: vscode.TextDocument): SymbolLocation[] => {
         const lineNum = index + 1;
         const trimmed = line.trim();
 
-        if (trimmed === 'variables') {
-            inVariablesBlock = true;
-            return;
+        const braceMatch = trimmed.match(/{/g);
+        if (braceMatch) {
+            braceCount += braceMatch.length;
+        }
+        const closeMatch = trimmed.match(/}/g);
+        if (closeMatch) {
+            braceCount -= closeMatch.length;
+            if (inVariablesBlock && braceCount <= 0) {
+                inVariablesBlock = false;
+                braceCount = 0;
+            }
         }
 
-        if (inVariablesBlock) {
-            if (trimmed === '}' || trimmed.startsWith('}')) {
-                braceCount--;
-                if (braceCount === 0) {
-                    inVariablesBlock = false;
-                }
-                return;
-            }
-            if (trimmed.includes('{')) {
-                braceCount++;
-            }
+        if (trimmed === 'variables') {
+            inVariablesBlock = true;
+            braceCount = 1;
+            return;
         }
 
         if (trimmed.startsWith('#include')) {
@@ -53,22 +54,37 @@ const collectSymbols = (document: vscode.TextDocument): SymbolLocation[] => {
                     file: fileName
                 });
             }
-            return;
         }
 
-        if (inVariablesBlock) {
-            const varMatch = trimmed.match(/^\s*(BYTE|char|word|dword|int|long|float|double|msTimer|mstimer|timer|message|signal|envvar|sysvarInt|sysvarFloat|sysvarString)\s*\*?\s*(\w+)/);
+        if (inVariablesBlock || braceCount > 0) {
+            const varMatch = trimmed.match(/^\s*(const\s+)?(dword|word|byte|int|long|float|double|msTimer|mstimer|timer|message|signal|envvar|qword)\s*(\*\s*)?(\w+)/);
             if (varMatch) {
                 symbols.push({
-                    name: varMatch[2],
+                    name: varMatch[4],
                     type: 'variable',
                     range: new vscode.Range(index, 0, index, line.length),
                     file: fileName
                 });
             }
-            return;
-        }
-
+            const arrMatch = trimmed.match(/^\s*byte\s+(\w+)\[/);
+            if (arrMatch) {
+                symbols.push({
+                    name: arrMatch[1],
+                    type: 'variable',
+                    range: new vscode.Range(index, 0, index, line.length),
+                    file: fileName
+                });
+            }
+            const constVarMatch = trimmed.match(/^\s*const\s+(\w+)\s*=/);
+            if (constVarMatch) {
+                symbols.push({
+                    name: constVarMatch[1],
+                    type: 'variable',
+                    range: new vscode.Range(index, 0, index, line.length),
+                    file: fileName
+                });
+            }
+}
         const funcMatch = trimmed.match(/^(void|int|long|float|double|char|byte|word|dword|qword|boolean)\s+(\w+)\s*\(/);
         if (funcMatch && !trimmed.includes('{')) {
             symbols.push({
@@ -77,7 +93,6 @@ const collectSymbols = (document: vscode.TextDocument): SymbolLocation[] => {
                 range: new vscode.Range(index, 0, index, line.length),
                 file: fileName
             });
-            return;
         }
 
         const onHandlerMatch = trimmed.match(/^on\s+(\w+)\s*\(/);
@@ -88,7 +103,6 @@ const collectSymbols = (document: vscode.TextDocument): SymbolLocation[] => {
                 range: new vscode.Range(index, 0, index, line.length),
                 file: fileName
             });
-            return;
         }
     });
 
@@ -104,6 +118,13 @@ export function activate(context: vscode.ExtensionContext) {
             const word = document.getText(range);
             const upperWord = word.toUpperCase();
             const lowerWord = word.toLowerCase();
+            
+            const typeKey = Object.keys(CAPL_TYPES).find(k => k.toLowerCase() === lowerWord);
+            if (typeKey) {
+                const md = new vscode.MarkdownString(CAPL_TYPES[typeKey]);
+                md.isTrusted = true;
+                return new vscode.Hover(md, range);
+            }
             
             const funcKey = Object.keys(CAPL_FUNCTIONS).find(k => k.toLowerCase() === lowerWord);
             if (funcKey) {
