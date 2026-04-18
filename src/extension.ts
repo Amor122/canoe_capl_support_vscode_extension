@@ -102,43 +102,17 @@ export function activate(context: vscode.ExtensionContext) {
             if (!range) return null;
             
             const word = document.getText(range);
-            
             const upperWord = word.toUpperCase();
             const lowerWord = word.toLowerCase();
             
-            if (CAPL_FUNCTIONS[word]) {
-                return new vscode.Hover({
-                    language: 'capl',
-                    value: `**${word}**\n\n${CAPL_FUNCTIONS[word]}`
-                }, range);
+            const funcKey = Object.keys(CAPL_FUNCTIONS).find(k => k.toLowerCase() === lowerWord);
+            if (funcKey) {
+                return new vscode.Hover(new vscode.MarkdownString(CAPL_FUNCTIONS[funcKey]), range);
             }
             
-            if (CAPL_FUNCTIONS[lowerWord] && word !== lowerWord) {
-                return new vscode.Hover({
-                    language: 'capl',
-                    value: `**${word}**\n\n${CAPL_FUNCTIONS[lowerWord]}`
-                }, range);
-            }
-            
-            if (CAPL_FUNCTIONS[upperWord] && word !== upperWord) {
-                return new vscode.Hover({
-                    language: 'capl',
-                    value: `**${word}**\n\n${CAPL_FUNCTIONS[upperWord]}`
-                }, range);
-            }
-            
-            if (CAPL_KEYWORDS[word]) {
-                return new vscode.Hover({
-                    language: 'capl',
-                    value: `**${word}**\n\n${CAPL_KEYWORDS[word]}`
-                }, range);
-            }
-            
-            if (CAPL_KEYWORDS[lowerWord] && word !== lowerWord) {
-                return new vscode.Hover({
-                    language: 'capl',
-                    value: `**${word}**\n\n${CAPL_KEYWORDS[lowerWord]}`
-                }, range);
+            const kwKey = Object.keys(CAPL_KEYWORDS).find(k => k.toLowerCase() === lowerWord);
+            if (kwKey) {
+                return new vscode.Hover(new vscode.MarkdownString(CAPL_KEYWORDS[kwKey]), range);
             }
             
             return null;

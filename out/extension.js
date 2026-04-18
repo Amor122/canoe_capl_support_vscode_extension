@@ -121,35 +121,13 @@ function activate(context) {
             const word = document.getText(range);
             const upperWord = word.toUpperCase();
             const lowerWord = word.toLowerCase();
-            if (caplData_1.CAPL_FUNCTIONS[word]) {
-                return new vscode.Hover({
-                    language: 'capl',
-                    value: `**${word}**\n\n${caplData_1.CAPL_FUNCTIONS[word]}`
-                }, range);
+            const funcKey = Object.keys(caplData_1.CAPL_FUNCTIONS).find(k => k.toLowerCase() === lowerWord);
+            if (funcKey) {
+                return new vscode.Hover(new vscode.MarkdownString(caplData_1.CAPL_FUNCTIONS[funcKey]), range);
             }
-            if (caplData_1.CAPL_FUNCTIONS[lowerWord] && word !== lowerWord) {
-                return new vscode.Hover({
-                    language: 'capl',
-                    value: `**${word}**\n\n${caplData_1.CAPL_FUNCTIONS[lowerWord]}`
-                }, range);
-            }
-            if (caplData_1.CAPL_FUNCTIONS[upperWord] && word !== upperWord) {
-                return new vscode.Hover({
-                    language: 'capl',
-                    value: `**${word}**\n\n${caplData_1.CAPL_FUNCTIONS[upperWord]}`
-                }, range);
-            }
-            if (caplData_1.CAPL_KEYWORDS[word]) {
-                return new vscode.Hover({
-                    language: 'capl',
-                    value: `**${word}**\n\n${caplData_1.CAPL_KEYWORDS[word]}`
-                }, range);
-            }
-            if (caplData_1.CAPL_KEYWORDS[lowerWord] && word !== lowerWord) {
-                return new vscode.Hover({
-                    language: 'capl',
-                    value: `**${word}**\n\n${caplData_1.CAPL_KEYWORDS[lowerWord]}`
-                }, range);
+            const kwKey = Object.keys(caplData_1.CAPL_KEYWORDS).find(k => k.toLowerCase() === lowerWord);
+            if (kwKey) {
+                return new vscode.Hover(new vscode.MarkdownString(caplData_1.CAPL_KEYWORDS[kwKey]), range);
             }
             return null;
         }
