@@ -31,24 +31,36 @@ function parseFunctionSignature(sig) {
     // Skip function pointers
     if (sig.includes('(*)')) return null;
     
-    // Try various patterns
     // Pattern 1: returnType name(params) - supports const, *, &, complex types
     const match = sig.match(/^(.+?)\s+(\w+(?:\.\w+)?)\s*\((.*)\)$/);
-    if (!match) return null;
+    if (match) {
+        const returnType = match[1].trim();
+        const name = match[2];
+        const params = match[3];
+        if (returnType && returnType.length >= 2 && name && name.length >= 2) {
+            return {
+                returnType: returnType,
+                name: name,
+                params: params
+            };
+        }
+    }
     
-    const returnType = match[1].trim();
-    const name = match[2];
-    const params = match[3];
+    // Pattern 2: name(params) - no return type (like TestStepPass(), TestStepFail())
+    const match2 = sig.match(/^(\w+)\s*\((.*)\)$/);
+    if (match2) {
+        const name = match2[1];
+        const params = match2[2];
+        if (name && name.length >= 2) {
+            return {
+                returnType: 'void',
+                name: name,
+                params: params
+            };
+        }
+    }
     
-    // Validate returnType looks reasonable
-    if (!returnType || returnType.length < 2) return null;
-    if (name.length < 2) return null;
-    
-    return {
-        returnType: returnType,
-        name: name,
-        params: params
-    };
+    return null;
 }
 
 function extractIndividualFunctions(func) {

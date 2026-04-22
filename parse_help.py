@@ -60,18 +60,19 @@ def parse_html_file(htm_path):
         plain = re.sub(r'\s+', ' ', plain)
         
         # Find all function patterns - be more aggressive
-        # Match: returnType name(params) or returnType name (params)
-        funcs = re.findall(r'(\w+(?:\s*<[^>]+>)?(?:\s*&|\s*\*)?\s+\w+(?:\.\w+)?\s*\([^)]*\))', plain)
+        # Handle both "returnType funcName(params)" and "funcName(params)"
+        # Also handle char[] as parameter type
+        funcs = re.findall(r'(\w+)\s*\(([^)]*)\)', plain)
         
         clean_syntax = []
-        for f in funcs:
-            f = f.strip()
-            # Skip function pointers and weird stuff
-            if '*' in f[:5] or f.startswith('('):
+        for func_name, params in funcs:
+            full = f"{func_name}({params})"
+            # Skip keywords and noise
+            if func_name.lower() in ('syntax', 'void', 'char', 'int', 'long', 'byte', 'word', 'dword', 'double', 'float', 'class', 'struct'):
                 continue
-            # Must have balanced parens
-            if f.count('(') == f.count(')'):
-                clean_syntax.append(f)
+            # Must have balanced parens and not empty
+            if full.count('(') == full.count(')') and func_name:
+                clean_syntax.append(full)
         
         if clean_syntax:
             result['syntax'] = '\n'.join(clean_syntax)
