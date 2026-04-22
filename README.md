@@ -1,99 +1,68 @@
-# Vector CAPL Language Support
+# CANoe CAPL Support
 
-VSCode extension providing comprehensive CAPL (Communication Access Programming Language) support for Vector CANoe/CANalyzer.
+VSCode 扩展，为 CANoe CAPL 语言提供语法高亮、悬停文档、代码补全、跳转定义、查找引用和参数检查。
 
-## Features
+## 功能
 
-### Syntax Highlighting
-- Keywords: if, else, while, for, switch, case, return, const, static, void, enum, struct, on, include, define
-- Types: byte, word, dword, qword, int, long, int64, float, double, char, boolean, timer, Timer, msTimer, mstimer, message, signal, envvar, pdu, sysvar
-- Functions: write, writeLineEx, putValue, getValue, setTimer, setTimerCyclic, memcpy, memset, strlen, strcpy, TestStepPass, TestStepFail, and 5000+ more
-- Comments and strings support
+- **语法高亮**：CAPL 关键字、函数、类型、字符串、注释
+- **悬停文档**：将光标放在函数上显示详细文档
+- **代码补全**：输入函数名自动补全
+- **跳转定义**：转到变量/函数定义处
+- **查找引用**：查找所有引用位置
+- **参数检查**：内置函数参数数量检查
+- **类型检查**：类型兼容性检查
 
-### Hover Documentation  
-- Hover over functions and keywords to see descriptions
-- Includes 5000+ CAPL functions from Vector CANoe Help
+## 支持的文件
 
-### Auto-completion
-- IntelliSense for CAPL functions and keywords
-- User-defined variables and functions
-- Variables from `variables { }` blocks
+- `.can` - CAPL 程序文件
+- `.cin` - CAPL 包含文件
 
-### Jump to Definition
-- Ctrl+Click or F12 to jump to variable/function definitions
-- Supports variables defined in `variables { }` blocks
-- Supports functions defined after usage
-- Cross-file navigation (all open .can/.cin files)
+## 支持的 CANoe 版本
 
-### Find References
-- Shift+F12 to find all references to a variable or function
-- Searches across all open CAPL files
+19.5.44 (其他版本可能也兼容)
 
-### Include Links
-- Ctrl+Click on #include paths to open included files
+## 安装
 
-### Syntax Error Analysis
-- Real-time diagnostics for:
-  - Missing semicolons
-  - Unmatched braces and parentheses
-  - Comments at end of lines handled correctly
+1. 下载 `canoe-capl-support-1.0.3.vsix`
+2. VSCode: `扩展` → `从 VSIX 安装`
 
-## File Extensions
+## 使用
 
-- `.can` - CANoe configuration files  
-- `.cin` - CANoe Include files
+打开 `.can` 或 `.cin` 文件即可使用。
 
-## Installation
+### 悬停文档
 
-1. Install from VSCode Marketplace (search for "Vector CAPL")
-2. Or: Install the VSIX file from releases
+将光标放在函数名上查看文档：
 
-## Usage
+```
+Write("hello");  // 把光标放在 Write 上
+```
 
-1. Open any `.can`, or `.cin` file in VSCode
-2. For cross-file features, add the project folder to workspace:
-   - File → Add Folder to Workspace
-   - Select the CANoe Sample Configurations folder
+### 代码补全
 
-## Keyboard Shortcuts
+输入函数名前几个字符：
 
-| Feature | Shortcut |
-|---------|---------|
-| Jump to Definition | Ctrl+Click or F12 |
-| Find References | Shift+F12 |
-| Hover Documentation | Hover over function |
+```
+Wri  // 按 Ctrl+Space 触发补全
+```
 
-## Data Sources
+### 参数检查
 
-This extension was built by analyzing:
-- Vector CANoe Help 19.5.44 documentation
-- Sample Configurations from CANoe 19.5.44
+调用内置函数时自动检查参数数量：
 
-Total CAPL functions documented: 5000+
+```
+WriteEx();  // 会报告错误：需要 3 个参数
+```
 
-## Version
+## 数据来源
 
-1.0.2
+函数文档来自 Vector CANoe 帮助文档 (19.5.44)，包含 **7474 个**内置函数/重载。
 
-## Changelog
+## 版本历史
 
-### 1.0.2
-- Fixed variable parsing in on timer handlers
-- Added enum and struct type definitions
-- Improved hover priority (types → functions → keywords)
-- Fixed const and array variable declarations
-- Fixed brace counting in variables blocks
-- Added support for pointer variables (int * data)
-- Added 5000+ function hover documentation
+- 1.0.3 - 支持所有函数重载、参数检查
+- 1.0.2 - 初始版本
 
-### 1.0.1
-- Initial release
-- Syntax highlighting
-- Hover documentation
-- Code completion
-- Jump to definition
-- Find references
+## 许可
 
-## License
-
-MIT
+MIT License

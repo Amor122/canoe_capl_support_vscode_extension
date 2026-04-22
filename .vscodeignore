@@ -5,3 +5,7 @@ venv/
 *.vsix
 .DS_Store
 *.log
+HELP_EXTRACTED.json
+build_from_help.js
+parse_help.py
+.gitignore
