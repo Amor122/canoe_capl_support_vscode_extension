@@ -72,8 +72,15 @@ const getVariableType = (varName: string, document: vscode.TextDocument, current
 }
          
         // Support pdu and message declarations: pdu TypeName varName; or message 0x123 varName;
-        const msgDecl = line.match(/^\s*(pdu|message)(?:\s+\w+)?(?:\s+0x[\da-fA-F]+)?\s*(\w+)\s*[;=,\[]/i);
+        // Also support ethernetPacket, flexraymessage, a664frame, etc.
+        const msgDecl = line.match(/^\s*(pdu|message|ethernetPacket|flexraymessage|a664frame|a664message|linframe|pg)(?:\s+\w+)?(?:\s+0x[\da-fA-F]+)?\s*(\w+)\s*[;=,\[]/i);
         if (msgDecl && msgDecl[2] && msgDecl[2].toLowerCase() === varName.toLowerCase()) {
+            return 'message';
+        }
+        
+        // Also support just type name without the pdu/message keyword
+        const implicitMsg = line.match(/^\s*(ethernetPacket|flexraymessage|a664frame|a664message|linframe|pg)\s+(\w+)\s*[;=,\[]/i);
+        if (implicitMsg && implicitMsg[2] && implicitMsg[2].toLowerCase() === varName.toLowerCase()) {
             return 'message';
         }
         
@@ -948,15 +955,17 @@ const fullExp = params[i].trim();
                         // Skip variadic params (containing ...)
                         if (fullExp.includes('...')) continue;
                         // Extract expected type - supports all CAPL types
-                        const expTypeMatch = fullExp.match(/^\s*(struct|union|array|dword|word|byte|int|long|float|double|qword|boolean|char|timer|mstimer|int64|string|text|message|signal)\b/i);
+                        const expTypeMatch = fullExp.match(/^\s*(struct|union|array|dword|word|byte|int|long|float|double|qword|boolean|char|timer|mstimer|int64|string|text|message|signal|this)\b/i);
                         let expTypeRaw: string;
                         if (expTypeMatch) {
                             expTypeRaw = expTypeMatch[1].toLowerCase();
                         } else {
                             const typeFromPattern = fullExp.replace(/[\[\]].*$/, '').trim().split(/\s/)[0].toLowerCase();
                             expTypeRaw = typeFromPattern;
-                        }
+}
                         const expTypes = getExpectedTypes(expTypeRaw);
+                        // Skip checking for 'this' - it's a special reference in CAPL event handlers
+                        if (arg.toLowerCase() === 'this') continue;
                         if (/^[a-zA-Z_]\w*$/.test(arg)) {
                             const vType = getVariableType(arg, document, lineNum);
                             if (!vType) {
