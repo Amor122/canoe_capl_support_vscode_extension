@@ -21,8 +21,11 @@ const TYPE_MAP: Record<string, string[]> = {
     'qword': ['qword', 'dword', 'long', 'word', 'int', 'byte'],
     'float': ['float', 'double'],
     'double': ['double', 'float'],
-    'char': ['char', 'byte'],
+    'char': ['char', 'byte', 'int', 'long', 'word', 'dword', 'qword'],
     'boolean': ['boolean', 'byte', 'int', 'long'],
+    'struct': ['struct', 'byte', 'char', 'array', 'byte[]', 'char[]'],
+    'union': ['union', 'byte', 'char', 'array', 'byte[]', 'char[]'],
+    'array': ['array', 'byte', 'char', 'byte[]', 'char[]'],
 };
 
 const getExpectedTypes = (paramType: string): string[] => {
@@ -74,24 +77,43 @@ const getVariableType = (varName: string, document: vscode.TextDocument, current
 };
 
 const getFunctionParams = (syntaxLine: string, argCount: number): string[] => {
-    const afterSyntax = syntaxLine.replace(/^Syntax:\s*/i, '');
-    const formParts = afterSyntax.split(/\/\/\s*form\s*\d+/i);
+    const cleanSyntax = syntaxLine.replace(/.*Syntax:\s*/i, '');
+    const formParts = cleanSyntax.split(/\/\/\s*form\s*\d+/i);
     for (const form of formParts) {
         const trimmed = form.trim();
         if (!trimmed.includes('(')) continue;
         const pm = trimmed.match(/\(([^)]*)\)/);
         if (pm) {
             const fp = pm[1].split(',').filter(p => p.trim());
-            if (fp.length === argCount) {
+            const isVariadic = fp.some(p => p.includes('...'));
+            if (isVariadic) {
+                const minParams = fp.filter(p => p.trim() && !p.includes('...')).length;
+                if (argCount >= minParams) {
+                    return fp;
+                }
+            } else if (fp.length === argCount) {
                 return fp;
-            }
-            if (fp.length > argCount && fp.some(p => p.includes('...'))) {
+            } else if (fp.length === 0 && argCount === 0) {
                 return fp;
             }
         }
     }
     const firstPm = formParts[0]?.trim().match(/\(([^)]*)\)/);
     return firstPm ? firstPm[1].split(',').filter(p => p.trim()) : [];
+};
+
+const findMatchingParams = (funcData: string, argCount: number): {params: string[], isVariadic: boolean, minParams: number} => {
+    const syntaxLines = funcData.split('\n').filter(l => l.includes('Syntax:'));
+    for (const line of syntaxLines) {
+        const cleanLine = line.replace(/.*Syntax:\s*/, 'Syntax: ');
+        const params = getFunctionParams(cleanLine, argCount);
+        if (params.length > 0 || argCount === 0) {
+            const isVariadic = params.some(p => p.includes('...'));
+            const minParams = isVariadic ? params.filter(p => p.trim() && !p.includes('...')).length : params.length;
+            return { params, isVariadic, minParams };
+        }
+    }
+    return { params: [], isVariadic: false, minParams: 0 };
 };
 
 const collectSymbols = (document: vscode.TextDocument): SymbolLocation[] => {
@@ -314,11 +336,29 @@ export function activate(context: vscode.ExtensionContext) {
             }
             
             // Find function by name - keys are functionName(params) format
-            const funcKeys = Object.keys(CAPL_FUNCTIONS).filter(k => k.toLowerCase().startsWith(lowerWord + '('));
+            const funcKeys = Object.keys(CAPL_FUNCTIONS).filter(k => 
+                k.toLowerCase().startsWith(lowerWord + '(') ||
+                k.toLowerCase().startsWith(lowerWord.toLowerCase() + '(') ||
+                k.toLowerCase().startsWith(lowerWord.toUpperCase() + '(')
+            );
             if (funcKeys.length > 0) {
-                const raw = CAPL_FUNCTIONS[funcKeys[0]];
-                const doc = raw.replace(/\n/g, '<br/>');
-                const md = new vscode.MarkdownString(doc);
+                // Start with first entry's full documentation
+                const firstRaw = CAPL_FUNCTIONS[funcKeys[0]];
+                let doc = firstRaw;
+                
+                // Add syntax from all other overloads
+                if (funcKeys.length > 1) {
+                    const firstSyntaxMatch = firstRaw.match(/Syntax:[^\n]*/);
+                    for (const key of funcKeys.slice(1)) {
+                        const raw = CAPL_FUNCTIONS[key];
+                        const syntaxMatch = raw.match(/Syntax:[^\n]*/);
+                        if (syntaxMatch && firstSyntaxMatch && syntaxMatch[0] !== firstSyntaxMatch[0]) {
+                            doc += '\n' + syntaxMatch[0];
+                        }
+                    }
+                }
+                
+                const md = new vscode.MarkdownString(doc.replace(/\n/g, '<br/>'));
                 md.isTrusted = true;
                 md.supportHtml = true;
                 return new vscode.Hover(md, range);
@@ -749,53 +789,117 @@ const onMatch = line.match(/^on\s+(\w+)/);
             const funcMatches = trimmed.matchAll(funcCallRegex);
             for (const callMatch of funcMatches) {
                 const funcName = callMatch[1];
-                // Keys are now functionName(params), find by prefix
-                const funcKey = Object.keys(CAPL_FUNCTIONS).find(k => k.startsWith(funcName + '(') || k.startsWith(funcName.toLowerCase() + '(') || k.startsWith(funcName.toUpperCase() + '('));
-                const funcData = funcKey ? CAPL_FUNCTIONS[funcKey] : null;
-                if (funcData) {
-                    const syntaxMatchPart = funcData.split('\n').find(l => l.startsWith('Syntax:'));
-                    if (syntaxMatchPart) {
-                        const actualArgs = callMatch[2] ? callMatch[2].split(',').filter(a => a.trim()) : [];
-                        let params = getFunctionParams(syntaxMatchPart, actualArgs.length);
+                const actualArgs = callMatch[2] ? callMatch[2].split(',').filter(a => a.trim()) : [];
+                const actualCount = actualArgs.length;
+                
+                // Find all matching function keys
+                const funcKeys = Object.keys(CAPL_FUNCTIONS).filter(k => 
+                    k.startsWith(funcName + '(') || 
+                    k.startsWith(funcName.toLowerCase() + '(') || 
+                    k.startsWith(funcName.toUpperCase() + '(')
+                );
+                
+                // Find the key with matching parameter count
+                let funcKey = null;
+                let funcData = null;
+                
+                for (const k of funcKeys) {
+                    const data = CAPL_FUNCTIONS[k];
+                    const syntaxLine = data.split('\n').find(l => l.includes('Syntax:'));
+                    if (syntaxLine) {
+                        const cleanSyntax = syntaxLine.replace(/.*Syntax:\s*/, 'Syntax: ');
+                        const params = getFunctionParams(cleanSyntax, actualCount);
                         const isVariadic = params.some(p => p.includes('...'));
                         if (isVariadic) {
-                            params = params.filter(p => p.trim() && !p.includes('...'));
+                            const minParams = params.filter(p => p.trim() && !p.includes('...')).length;
+                            if (actualCount >= minParams) {
+                                funcKey = k;
+                                funcData = data;
+                                break;
+                            }
+                        } else if (params.length === actualCount) {
+                            funcKey = k;
+                            funcData = data;
+                            break;
+                        } else if (params.length === 0 && actualCount === 0) {
+                            funcKey = k;
+                            funcData = data;
+                            break;
                         }
-                        if (actualArgs.length !== params.length || (params.length === 0 && actualArgs.length > 0)) {
-                            const msg = actualArgs.length > params.length 
-                                ? `Function '${funcName}' expects ${params.length} params (got ${actualArgs.length})`
-                                : (actualArgs.length < params.length
-                                    ? (isVariadic 
-                                        ? `Function '${funcName}' expects ${params.length}+ params (got ${actualArgs.length})`
-                                        : `Function '${funcName}' expects ${params.length} params (got ${actualArgs.length})`)
-                                    : `Function '${funcName}' requires 0 params (got ${actualArgs.length})`);
-                            diagnostics.push({
-                                message: msg,
-                                range: new vscode.Range(lineNum - 1, 0, lineNum - 1, line.length),
-                                severity: vscode.DiagnosticSeverity.Warning
-                            });
+                    }
+                }
+                
+                // If no exact match, try to find best match by arg count
+                if (!funcKey && funcKeys.length > 0) {
+                    let bestMatch: {key: string, data: string, minDiff: number} | null = null;
+                    for (const k of funcKeys) {
+                        const data = CAPL_FUNCTIONS[k];
+                        const result = findMatchingParams(data, actualCount);
+                        if (result.params.length > 0) {
+                            const diff = Math.abs(actualCount - result.minParams);
+                            if (!bestMatch || diff < bestMatch.minDiff) {
+                                bestMatch = { key: k, data, minDiff: diff };
+                            }
                         }
-                        for (let i = 0; i < Math.min(actualArgs.length, params.length); i++) {
-                            const arg = actualArgs[i].trim();
-                            const fullExp = params[i].trim();
-                            const expTypeMatch = fullExp.match(/^\s*(dword|word|byte|int|long|float|double|qword|boolean|char)\b/i);
-                            const expTypeRaw = expTypeMatch ? expTypeMatch[1].toLowerCase() : fullExp.replace(/\[\].*$/, '').trim().split(/\s/)[0];
-                            const expTypes = getExpectedTypes(expTypeRaw);
-                            if (/^[a-zA-Z_]\w*$/.test(arg)) {
-                                const vType = getVariableType(arg, document, lineNum);
-                                if (!vType) {
-                                    diagnostics.push({
-                                        message: `Undefined variable '${arg}'`,
-                                        range: new vscode.Range(lineNum - 1, 0, lineNum - 1, line.length),
-                                        severity: vscode.DiagnosticSeverity.Error
-                                    });
-                                } else if (!isTypeCompatible(vType, expTypes)) {
-                                    diagnostics.push({
-                                        message: `Parameter ${i + 1} type mismatch: expects ${expTypeRaw}, got '${vType}'`,
-                                        range: new vscode.Range(lineNum - 1, 0, lineNum - 1, line.length),
-                                        severity: vscode.DiagnosticSeverity.Warning
-                                    });
-                                }
+                    }
+                    if (bestMatch) {
+                        funcKey = bestMatch.key;
+                        funcData = bestMatch.data;
+                    }
+                }
+                
+                if (funcData) {
+                    const cleanSyntaxLine = funcData.split('\n').find(l => l.includes('Syntax:'))?.replace(/.*Syntax:\s*/, 'Syntax: ') || '';
+                    const result = getFunctionParams(cleanSyntaxLine, actualCount);
+                    const isVariadic = result.some(p => p.includes('...'));
+                    const minParams = isVariadic ? result.filter(p => p.trim() && !p.includes('...')).length : result.length;
+                    const params = result;
+                    
+                    const hasExactMatch = isVariadic 
+                        ? (actualCount >= minParams)
+                        : (params.length === actualCount);
+                    
+                    if (!hasExactMatch) {
+                        const msg = isVariadic
+                            ? `Function '${funcName}' expects ${minParams}+ params (got ${actualCount})`
+                            : `Function '${funcName}' expects ${params.length} params (got ${actualCount})`;
+                        diagnostics.push({
+                            message: msg,
+                            range: new vscode.Range(lineNum - 1, 0, lineNum - 1, line.length),
+                            severity: vscode.DiagnosticSeverity.Warning
+                        });
+                    }
+                        
+                    for (let i = 0; i < Math.min(actualCount, params.length); i++) {
+                        const arg = actualArgs[i].trim();
+                        const fullExp = params[i].trim();
+                        // Skip variadic params (containing ...)
+                        if (fullExp.includes('...')) continue;
+                        // Extract expected type - supports struct, union, array, and basic types
+                        const expTypeMatch = fullExp.match(/^\s*(struct|union|array|dword|word|byte|int|long|float|double|qword|boolean|char)\b/i);
+                        let expTypeRaw: string;
+                        if (expTypeMatch) {
+                            expTypeRaw = expTypeMatch[1].toLowerCase();
+                        } else {
+                            // Try to extract from patterns like "byte dest[]" or "struct type dest"
+                            const typeFromPattern = fullExp.replace(/[\[\]].*$/, '').trim().split(/\s/)[0].toLowerCase();
+                            expTypeRaw = typeFromPattern;
+                        }
+                        const expTypes = getExpectedTypes(expTypeRaw);
+                        if (/^[a-zA-Z_]\w*$/.test(arg)) {
+                            const vType = getVariableType(arg, document, lineNum);
+                            if (!vType) {
+                                diagnostics.push({
+                                    message: `Undefined variable '${arg}'`,
+                                    range: new vscode.Range(lineNum - 1, 0, lineNum - 1, line.length),
+                                    severity: vscode.DiagnosticSeverity.Error
+                                });
+                            } else if (!isTypeCompatible(vType, expTypes)) {
+                                diagnostics.push({
+                                    message: `Parameter ${i + 1} type mismatch: expects ${expTypeRaw}, got '${vType}'`,
+                                    range: new vscode.Range(lineNum - 1, 0, lineNum - 1, line.length),
+                                    severity: vscode.DiagnosticSeverity.Warning
+                                });
                             }
                         }
                     }
