@@ -54,9 +54,29 @@ const isTypeCompatible = (actualType: string, expectedTypes: string[]): boolean 
 const getVariableType = (varName: string, document: vscode.TextDocument, currentLine: number): string => {
     const text = document.getText();
     const lines = text.split('\n');
-    let searchLimit = currentLine > 0 ? currentLine - 1 : lines.length;
     
-    for (let i = 0; i < searchLimit; i++) {
+    // Find current function/envent handler scope - search backwards from currentLine
+    let funcStart = 0;
+    for (let i = currentLine - 1; i >= 0; i--) {
+        const line = lines[i].trim();
+        // Check for function or on handler start
+        if (/^(void|int|long|float|double|char|byte|word|dword|qword|timer|mstimer|int64|string|text|message)\s+\w+\s*\(/.test(line) || 
+            /^on\s+/.test(line)) {
+            funcStart = i + 1;
+            break;
+        }
+        // Check for start of variables block
+        if (line === 'variables' || line === 'variables {') {
+            funcStart = i + 1;
+            break;
+        }
+    }
+    
+    let searchLimit = currentLine > 0 ? currentLine - 1 : lines.length;
+    // Only search from current function start
+    const scopeStart = funcStart;
+    
+    for (let i = scopeStart - 1; i < searchLimit; i++) {
         const line = lines[i].trim();
         
         const funcMatch = line.match(/^(void|int|long|float|double|char|byte|word|dword|qword|timer|mstimer|int64|string|text|message)\s+(\w+)\s*\(([^)]*)\)/i);
@@ -89,6 +109,18 @@ const getVariableType = (varName: string, document: vscode.TextDocument, current
         if (forDecl && forDecl[2] && forDecl[2].toLowerCase() === varName.toLowerCase()) {
             const t = forDecl[1].toLowerCase();
             return t.replace('[]', '');
+        }
+        
+        // Support stack type: stack int myStack;
+        const stackDecl = line.match(/^\s*(const\s+)?stack\s+(\w+)\s+(\w+)\s*[;=,\[]/i);
+        if (stackDecl && stackDecl[3] && stackDecl[3].toLowerCase() === varName.toLowerCase()) {
+            return 'stack';
+        }
+        
+        // Support queue type: queue int myQueue;
+        const queueDecl = line.match(/^\s*(const\s+)?queue\s+(\w+)\s+(\w+)\s*[;=,\[]/i);
+        if (queueDecl && queueDecl[3] && queueDecl[3].toLowerCase() === varName.toLowerCase()) {
+            return 'queue';
         }
         
         // Basic type declarations

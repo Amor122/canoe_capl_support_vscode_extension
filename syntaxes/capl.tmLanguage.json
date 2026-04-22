@@ -56,6 +56,8 @@
         { "name": "keyword", "match": "\\bifdef\\b" },
         { "name": "keyword", "match": "\\bifndef\\b" },
         { "name": "keyword", "match": "\\bendif\\b" },
+        { "name": "keyword", "match": "\\bstack\\b" },
+        { "name": "keyword", "match": "\\bqueue\\b" },
         { "name": "keyword", "match": "(?<!@)\\bthis(?=\\b|\\s|\\.)" }
       ]
     },
