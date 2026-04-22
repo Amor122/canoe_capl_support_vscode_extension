@@ -45,7 +45,9 @@
     "configuration": "./language-configuration.json"
   },
   "activationEvents": [
-    "onLanguage:capl"
+    "onLanguage:capl",
+    "workspaceContains:**/*.can",
+    "workspaceContains:**/*.cin"
   ],
   "devDependencies": {
     "@types/node": "^25.6.0",

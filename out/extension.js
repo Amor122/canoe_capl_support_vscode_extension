@@ -316,9 +316,10 @@ function activate(context) {
                 md.isTrusted = true;
                 return new vscode.Hover(md, range);
             }
-            const funcKey = Object.keys(caplData_1.CAPL_FUNCTIONS).find(k => k.toLowerCase() === lowerWord);
-            if (funcKey) {
-                const raw = caplData_1.CAPL_FUNCTIONS[funcKey];
+            // Find function by name - keys are functionName(params) format
+            const funcKeys = Object.keys(caplData_1.CAPL_FUNCTIONS).filter(k => k.toLowerCase().startsWith(lowerWord + '('));
+            if (funcKeys.length > 0) {
+                const raw = caplData_1.CAPL_FUNCTIONS[funcKeys[0]];
                 const doc = raw.replace(/\n/g, '<br/>');
                 const md = new vscode.MarkdownString(doc);
                 md.isTrusted = true;
@@ -564,15 +565,24 @@ function activate(context) {
             const items = [];
             const userVars = getUserDefinedVariables(document);
             const symbols = getDocumentSymbols(document);
-            for (const func of Object.keys(caplData_1.CAPL_FUNCTIONS)) {
-                const item = new vscode.CompletionItem(func, vscode.CompletionItemKind.Function);
-                item.detail = caplData_1.CAPL_FUNCTIONS[func].split('\n')[0];
-                item.insertText = new vscode.SnippetString(func + '($0)');
+            // Deduplicate by function name prefix
+            const funcNames = new Set();
+            for (const funcKey of Object.keys(caplData_1.CAPL_FUNCTIONS)) {
+                const match = funcKey.match(/^(\w+)\(/);
+                if (!match)
+                    continue;
+                const funcName = match[1];
+                if (funcNames.has(funcName))
+                    continue;
+                funcNames.add(funcName);
+                const item = new vscode.CompletionItem(funcName, vscode.CompletionItemKind.Function);
+                item.detail = caplData_1.CAPL_FUNCTIONS[funcKey].split('\n')[0];
+                item.insertText = new vscode.SnippetString(funcName + '($0)');
                 items.push(item);
-                const upperFunc = func.toUpperCase();
-                if (func !== upperFunc) {
+                const upperFunc = funcName.toUpperCase();
+                if (funcName !== upperFunc) {
                     const itemUpper = new vscode.CompletionItem(upperFunc, vscode.CompletionItemKind.Function);
-                    itemUpper.detail = caplData_1.CAPL_FUNCTIONS[func].split('\n')[0];
+                    itemUpper.detail = item.detail;
                     itemUpper.insertText = new vscode.SnippetString(upperFunc + '($0)');
                     items.push(itemUpper);
                 }
@@ -658,7 +668,8 @@ function activate(context) {
                 const funcCallMatch = trimmed.match(/^\s*(\w+)\s*\(/);
                 if (funcCallMatch) {
                     const funcName = funcCallMatch[1];
-                    if (caplData_1.CAPL_FUNCTIONS[funcName] || caplData_1.CAPL_KEYWORDS[funcName]) {
+                    const isKnownFunc = Object.keys(caplData_1.CAPL_FUNCTIONS).some(k => k.startsWith(funcName + '('));
+                    if (isKnownFunc || caplData_1.CAPL_KEYWORDS[funcName]) {
                         return !trimmed.endsWith(';');
                     }
                 }
@@ -710,7 +721,9 @@ function activate(context) {
             const funcMatches = trimmed.matchAll(funcCallRegex);
             for (const callMatch of funcMatches) {
                 const funcName = callMatch[1];
-                const funcData = caplData_1.CAPL_FUNCTIONS[funcName] || caplData_1.CAPL_FUNCTIONS[funcName.toLowerCase()] || caplData_1.CAPL_FUNCTIONS[funcName.toUpperCase()];
+                // Keys are now functionName(params), find by prefix
+                const funcKey = Object.keys(caplData_1.CAPL_FUNCTIONS).find(k => k.startsWith(funcName + '(') || k.startsWith(funcName.toLowerCase() + '(') || k.startsWith(funcName.toUpperCase() + '('));
+                const funcData = funcKey ? caplData_1.CAPL_FUNCTIONS[funcKey] : null;
                 if (funcData) {
                     const syntaxMatchPart = funcData.split('\n').find(l => l.startsWith('Syntax:'));
                     if (syntaxMatchPart) {

@@ -15,17 +15,32 @@ function cleanStr(str) {
         .replace(/Example /i, '')
         .replace(/'/g, '')
         .replace(/`/g, '')
+        .replace(/&#160;/g, ' ')
+        .replace(/&#\d+;/g, '')
+        .replace(/—/g, '-')
         .replace(/[^\x20-\x7E]/g, ' ')
-        .replace(/\s+/g, ' ');
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function cleanDoc(str) {
+    if (!str) return '';
+    return str
+        .replace(/&#160;/g, ' ')
+        .replace(/&#\d+;/g, '')
+        .replace(/—/g, '-')
+        .replace(/'/g, '')
+        .replace(/`/g, '');
 }
 
 function formatDoc(func) {
     let doc = '';
     if (func.syntax) doc = doc + 'Syntax: ' + cleanStr(func.syntax) + '\n';
     if (func.description) doc = doc + 'Description: ' + cleanStr(func.description) + '\n';
-    if (func.parameters && func.parameters !== 'Parameters —') doc = doc + 'Parameters: ' + cleanStr(func.parameters) + '\n';
-    if (func.returnValues && func.returnValues !== 'Return Values —') doc = doc + 'Returns: ' + cleanStr(func.returnValues);
-    doc = doc.replace(/'/g, '');
+    const params = func.parameters ? cleanDoc(func.parameters) : '';
+    if (params && params !== 'Parameters' && params !== 'Parameters -') doc = doc + 'Parameters: ' + cleanStr(func.parameters) + '\n';
+    const returns = func.returnValues ? cleanDoc(func.returnValues) : '';
+    if (returns && returns !== 'Return Values' && returns !== 'Return Values -') doc = doc + 'Returns: ' + cleanStr(func.returnValues);
     return doc.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/"/g, '\\"');
 }
 
