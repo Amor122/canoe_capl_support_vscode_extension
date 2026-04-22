@@ -2,7 +2,7 @@
   "name": "canoe-capl-support",
   "displayName": "CANoe CAPL Support",
   "description": "CAPL language support for VSCode with syntax highlighting, hover docs, code completion, jump to definition, find references, and error analysis",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "publisher": "canoe-capl",
   "engines": {
     "vscode": "^1.96.0"

@@ -100,18 +100,33 @@ def extract_all_functions():
     help_path = Path(HELP_DIR)
     all_functions = []
     
+    # 搜索所有可能的目录
     search_patterns = [
         help_path / "Content" / "Topics",
         help_path / "Subsystems",
     ]
     
+    # 需要排除的Overview等非函数文件
+    exclude_patterns = ['Overview', 'overview', 'ErrorCodes', 'errorcodes', 'Selectors', 'selectors', 
+                        'StartPage', 'ClassOverview', 'FunctionsOverview', 'Description',
+                        'ReturnCodes', 'Limitations', 'FormatExpressions', 'EventProceduresOverview',
+                        'ExpandedFunctions', 'AccessMode', 'ProcessingDiagnosticRequests']
+    
     for search_path in search_patterns:
         if not search_path.exists():
             continue
         for htm_file in search_path.rglob("CAPLfunction*.htm"):
-            func_info = parse_html_file(htm_file)
-            if func_info:
-                all_functions.append(func_info)
+            # 检查是否应该排除
+            should_skip = False
+            for exc in exclude_patterns:
+                if exc in htm_file.name:
+                    should_skip = True
+                    break
+            
+            if not should_skip:
+                func_info = parse_html_file(htm_file)
+                if func_info:
+                    all_functions.append(func_info)
     
     return all_functions
 
