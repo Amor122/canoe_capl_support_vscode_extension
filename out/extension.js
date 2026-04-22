@@ -82,24 +82,36 @@ const getVariableType = (varName, document, currentLine) => {
     let searchLimit = currentLine > 0 ? currentLine - 1 : lines.length;
     for (let i = 0; i < searchLimit; i++) {
         const line = lines[i].trim();
-        const funcMatch = line.match(/^(void|int|long|float|double|char|byte|word|dword|qword|timer|mstimer|int64|string|text)\s+(\w+)\s*\(([^)]*)\)/i);
+        const funcMatch = line.match(/^(void|int|long|float|double|char|byte|word|dword|qword|timer|mstimer|int64|string|text|message)\s+(\w+)\s*\(([^)]*)\)/i);
         if (funcMatch) {
             const params = funcMatch[3].split(',');
             for (const p of params) {
-                const pm = p.match(/\b(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char|message|signal)\s+(\w+)/i);
-                if (pm && pm[2].toLowerCase() === varName.toLowerCase()) {
-                    return pm[1].toLowerCase();
+                const pm = p.match(/\b(const\s+)?(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char|message|signal)\s+(\w+)/i);
+                if (pm && pm[3] && pm[3].toLowerCase() === varName.toLowerCase()) {
+                    return (pm[2] || 'dword').toLowerCase();
                 }
             }
             continue;
         }
-        const varDecl = line.match(/^\s*(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char)\s+(\w+)\s*[=;,\[]/i);
-        if (varDecl && varDecl[2].toLowerCase() === varName.toLowerCase()) {
-            return varDecl[1].toLowerCase();
+        // Support pdu and message declarations: pdu TypeName varName; or message 0x123 varName;
+        const msgDecl = line.match(/^\s*(pdu|message)(?:\s+\w+)?(?:\s+0x[\da-fA-F]+)?\s*(\w+)\s*[;=,\[]/i);
+        if (msgDecl && msgDecl[2] && msgDecl[2].toLowerCase() === varName.toLowerCase()) {
+            return 'message';
         }
-        const varAssign = line.match(/^\s*(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char)\s+(\w+)\s*=/i);
-        if (varAssign && varAssign[2].toLowerCase() === varName.toLowerCase()) {
-            return varAssign[1].toLowerCase();
+        // Support for loop: for(char[] aKey : arr) or for(int i = 0; i < n; i++)
+        const forDecl = line.match(/^\s*for\s*\(\s*(\w+(?:\[\])?)\s+(\w+)\s*:/i);
+        if (forDecl && forDecl[2] && forDecl[2].toLowerCase() === varName.toLowerCase()) {
+            const t = forDecl[1].toLowerCase();
+            return t.replace('[]', '');
+        }
+        // Basic type declarations
+        const basicDecl = line.match(/^\s*(const\s+)?(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char)\s+(\w+)\s*[;=,\[]/i);
+        if (basicDecl && basicDecl[3] && basicDecl[3].toLowerCase() === varName.toLowerCase()) {
+            return (basicDecl[2] || 'dword').toLowerCase();
+        }
+        const basicAssign = line.match(/^\s*(const\s+)?(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char)\s+(\w+)\s*=/i);
+        if (basicAssign && basicAssign[3] && basicAssign[3].toLowerCase() === varName.toLowerCase()) {
+            return (basicAssign[2] || 'dword').toLowerCase();
         }
     }
     return '';
@@ -761,62 +773,118 @@ function activate(context) {
                 return;
             if (trimmed === '}' || trimmed === '{')
                 return;
-            const funcCallRegex = /(\w+)\s*\(([^)]*)\)/g;
-            const funcMatches = trimmed.matchAll(funcCallRegex);
+            const funcCallRegex = /(\w+)\s*\(/g;
+            const funcMatches = [...trimmed.matchAll(funcCallRegex)];
             for (const callMatch of funcMatches) {
                 const funcName = callMatch[1];
-                const actualArgs = callMatch[2] ? callMatch[2].split(',').filter(a => a.trim()) : [];
+                // Find matching closing paren by balancing from start
+                const startPos = callMatch.index + callMatch[0].length;
+                let depth = 1;
+                let endPos = startPos;
+                for (let j = startPos; j < trimmed.length && depth > 0; j++) {
+                    if (trimmed[j] === '(')
+                        depth++;
+                    else if (trimmed[j] === ')')
+                        depth--;
+                    if (depth === 0) {
+                        endPos = j;
+                        break;
+                    }
+                }
+                // Split arguments by ',' only at depth=1
+                const argsPart = trimmed.substring(startPos, endPos);
+                const actualArgs = [];
+                let currentArg = '';
+                let argDepth = 0;
+                for (const ch of argsPart) {
+                    if (ch === '(')
+                        argDepth++;
+                    else if (ch === ')')
+                        argDepth--;
+                    else if (ch === ',' && argDepth === 0) {
+                        if (currentArg.trim())
+                            actualArgs.push(currentArg.trim());
+                        currentArg = '';
+                        continue;
+                    }
+                    currentArg += ch;
+                }
+                if (currentArg.trim())
+                    actualArgs.push(currentArg.trim());
                 const actualCount = actualArgs.length;
                 // Find all matching function keys
                 const funcKeys = Object.keys(caplData_1.CAPL_FUNCTIONS).filter(k => k.startsWith(funcName + '(') ||
                     k.startsWith(funcName.toLowerCase() + '(') ||
                     k.startsWith(funcName.toUpperCase() + '('));
-                // Find the key with matching parameter count
+                // Better matching: consider BOTH parameter count and type compatibility
                 let funcKey = null;
                 let funcData = null;
+                let bestMatch = null;
                 for (const k of funcKeys) {
                     const data = caplData_1.CAPL_FUNCTIONS[k];
                     const syntaxLine = data.split('\n').find(l => l.includes('Syntax:'));
-                    if (syntaxLine) {
-                        const cleanSyntax = syntaxLine.replace(/.*Syntax:\s*/, 'Syntax: ');
-                        const params = getFunctionParams(cleanSyntax, actualCount);
-                        const isVariadic = params.some(p => p.includes('...'));
-                        if (isVariadic) {
-                            const minParams = params.filter(p => p.trim() && !p.includes('...')).length;
-                            if (actualCount >= minParams) {
-                                funcKey = k;
-                                funcData = data;
-                                break;
+                    if (!syntaxLine)
+                        continue;
+                    const cleanSyntax = syntaxLine.replace(/.*Syntax:\s*/, 'Syntax: ');
+                    const params = getFunctionParams(cleanSyntax, actualCount);
+                    if (params.length === 0 && actualCount > 0)
+                        continue;
+                    if (params.length > actualCount && !params.some(p => p.includes('...')))
+                        continue;
+                    // Calculate type compatibility score
+                    let score = 0;
+                    let allMatch = true;
+                    // Check type compatibility for each argument
+                    for (let idx = 0; idx < Math.min(actualArgs.length, params.length); idx++) {
+                        const arg = actualArgs[idx].trim();
+                        const fullExp = params[idx].trim();
+                        if (fullExp.includes('...'))
+                            continue;
+                        const expTypeMatch = fullExp.match(/^\s*(\w+)/i);
+                        const expTypeRaw = expTypeMatch ? expTypeMatch[1].toLowerCase() : fullExp.replace(/[\[\]].*$/, '').trim().split(/\s/)[0].toLowerCase();
+                        const expTypes = getExpectedTypes(expTypeRaw);
+                        if (/^[a-zA-Z_]\w*$/.test(arg)) {
+                            const vType = getVariableType(arg, document, lineNum);
+                            if (vType && isTypeCompatible(vType, expTypes)) {
+                                score++;
+                            }
+                            else if (!vType) {
+                                allMatch = false;
                             }
                         }
-                        else if (params.length === actualCount) {
-                            funcKey = k;
-                            funcData = data;
-                            break;
-                        }
-                        else if (params.length === 0 && actualCount === 0) {
-                            funcKey = k;
-                            funcData = data;
-                            break;
-                        }
+                    }
+                    // Prefer exact parameter count match
+                    const exactCountMatch = (params.length === actualCount) || (params.length === 0 && actualCount === 0);
+                    if (exactCountMatch)
+                        score += 10;
+                    if (allMatch && (!bestMatch || score > bestMatch.matchScore)) {
+                        bestMatch = { key: k, data, matchScore: score };
                     }
                 }
-                // If no exact match, try to find best match by arg count
-                if (!funcKey && funcKeys.length > 0) {
-                    let bestMatch = null;
+                if (bestMatch) {
+                    // Already have best match
+                }
+                else {
+                    funcKey = null;
+                    funcData = null;
+                    // Fallback: find by param count only
+                    let fallbackMatch = null;
                     for (const k of funcKeys) {
                         const data = caplData_1.CAPL_FUNCTIONS[k];
+                        const syntaxLine = data.split('\n').find(l => l.includes('Syntax:'));
+                        if (!syntaxLine)
+                            continue;
                         const result = findMatchingParams(data, actualCount);
                         if (result.params.length > 0) {
                             const diff = Math.abs(actualCount - result.minParams);
-                            if (!bestMatch || diff < bestMatch.minDiff) {
-                                bestMatch = { key: k, data, minDiff: diff };
+                            if (!fallbackMatch || diff < fallbackMatch.minDiff) {
+                                fallbackMatch = { key: k, data, minDiff: diff };
                             }
                         }
                     }
-                    if (bestMatch) {
-                        funcKey = bestMatch.key;
-                        funcData = bestMatch.data;
+                    if (fallbackMatch) {
+                        funcKey = fallbackMatch.key;
+                        funcData = fallbackMatch.data;
                     }
                 }
                 if (funcData) {
