@@ -13,12 +13,12 @@ interface SymbolLocation {
 }
 
 const TYPE_MAP: Record<string, string[]> = {
-    'byte': ['byte', 'int', 'long', 'word', 'dword', 'qword'],
-    'int': ['int', 'long', 'dword', 'word', 'byte', 'qword'],
-    'long': ['long', 'dword', 'int', 'qword', 'word', 'byte'],
-    'word': ['word', 'dword', 'int', 'long', 'byte', 'qword'],
-    'dword': ['dword', 'long', 'qword', 'word', 'int', 'byte'],
-    'qword': ['qword', 'dword', 'long', 'word', 'int', 'byte'],
+    'byte': ['byte', 'char', 'int', 'long', 'word', 'dword', 'qword'],
+    'int': ['int', 'long', 'word', 'dword', 'qword', 'byte', 'char'],
+    'long': ['long', 'dword', 'int', 'qword', 'word', 'byte', 'char'],
+    'word': ['word', 'dword', 'int', 'long', 'byte', 'char', 'qword'],
+    'dword': ['dword', 'long', 'word', 'int', 'qword', 'byte', 'char'],
+    'qword': ['qword', 'dword', 'long', 'word', 'int', 'byte', 'char'],
     'float': ['float', 'double'],
     'double': ['double', 'float'],
     'char': ['char', 'byte', 'int', 'long', 'word', 'dword', 'qword'],
@@ -26,7 +26,13 @@ const TYPE_MAP: Record<string, string[]> = {
     'struct': ['struct', 'byte', 'char', 'array', 'byte[]', 'char[]'],
     'union': ['union', 'byte', 'char', 'array', 'byte[]', 'char[]'],
     'array': ['array', 'byte', 'char', 'byte[]', 'char[]'],
-    'timer': ['timer', 'dword', 'long'],
+    'timer': ['timer', 'mstimer', 'dword', 'long'],
+    'mstimer': ['mstimer', 'timer', 'dword', 'long'],
+    'int64': ['int64', 'qword', 'dword', 'long'],
+    'string': ['string', 'char', 'byte', 'text'],
+    'text': ['text', 'string', 'char', 'byte'],
+    'message': ['message', 'dword', 'qword', 'long'],
+    'signal': ['signal', 'dword', 'qword', 'long'],
 };
 
 const getExpectedTypes = (paramType: string): string[] => {
@@ -53,11 +59,11 @@ const getVariableType = (varName: string, document: vscode.TextDocument, current
     for (let i = 0; i < searchLimit; i++) {
         const line = lines[i].trim();
         
-        const funcMatch = line.match(/^(void|int|long|float|double|char|byte|word|dword|qword|timer)\s+(\w+)\s*\(([^)]*)\)/i);
+        const funcMatch = line.match(/^(void|int|long|float|double|char|byte|word|dword|qword|timer|mstimer|int64|string|text)\s+(\w+)\s*\(([^)]*)\)/i);
         if (funcMatch) {
             const params = funcMatch[3].split(',');
             for (const p of params) {
-                const pm = p.match(/\b(dword|word|byte|int|long|float|double|qword|boolean|timer|char)\s+(\w+)/i);
+                const pm = p.match(/\b(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char|message|signal)\s+(\w+)/i);
                 if (pm && pm[2].toLowerCase() === varName.toLowerCase()) {
                     return pm[1].toLowerCase();
                 }
@@ -65,11 +71,11 @@ const getVariableType = (varName: string, document: vscode.TextDocument, current
             continue;
         }
         
-        const varDecl = line.match(/^\s*(dword|word|byte|int|long|float|double|qword|boolean|timer)\s+(\w+)\s*[=;,\[]/i);
+        const varDecl = line.match(/^\s*(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char)\s+(\w+)\s*[=;,\[]/i);
         if (varDecl && varDecl[2].toLowerCase() === varName.toLowerCase()) {
             return varDecl[1].toLowerCase();
         }
-        const varAssign = line.match(/^\s*(dword|word|byte|int|long|float|double|qword|boolean|timer)\s+(\w+)\s*=/i);
+        const varAssign = line.match(/^\s*(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char)\s+(\w+)\s*=/i);
         if (varAssign && varAssign[2].toLowerCase() === varName.toLowerCase()) {
             return varAssign[1].toLowerCase();
         }
@@ -873,16 +879,15 @@ const onMatch = line.match(/^on\s+(\w+)/);
                         
                     for (let i = 0; i < Math.min(actualCount, params.length); i++) {
                         const arg = actualArgs[i].trim();
-                        const fullExp = params[i].trim();
+const fullExp = params[i].trim();
                         // Skip variadic params (containing ...)
                         if (fullExp.includes('...')) continue;
-                        // Extract expected type - supports struct, union, array, and basic types
-                        const expTypeMatch = fullExp.match(/^\s*(struct|union|array|dword|word|byte|int|long|float|double|qword|boolean|char)\b/i);
+                        // Extract expected type - supports all CAPL types
+                        const expTypeMatch = fullExp.match(/^\s*(struct|union|array|dword|word|byte|int|long|float|double|qword|boolean|char|timer|mstimer|int64|string|text|message|signal)\b/i);
                         let expTypeRaw: string;
                         if (expTypeMatch) {
                             expTypeRaw = expTypeMatch[1].toLowerCase();
                         } else {
-                            // Try to extract from patterns like "byte dest[]" or "struct type dest"
                             const typeFromPattern = fullExp.replace(/[\[\]].*$/, '').trim().split(/\s/)[0].toLowerCase();
                             expTypeRaw = typeFromPattern;
                         }

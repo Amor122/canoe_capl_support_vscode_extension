@@ -39,6 +39,28 @@ function WriteEx(...): 实际参数 >= 3 才报错
 
 `C:\Program Files\Vector\Help\Vector CANoe Help 19.5.44\en`
 
+## 类型兼容性
+
+完整TYPE_MAP:
+
+- `byte` ↔ char, int, long, word, dword, qword
+- `int` ↔ long, word, dword, qword, byte, char
+- `long` ↔ dword, int, qword, word, byte, char
+- `word` ↔ dword, int, long, byte, char, qword
+- `dword` ↔ long, word, int, qword, byte, char
+- `qword` ↔ dword, long, word, int, byte, char
+- `float` ↔ double
+- `double` ↔ float
+- `char` ↔ byte, int, long, word, dword, qword
+- `timer` ↔ mstimer, dword, long
+- `mstimer` ↔ timer, dword, long
+- `int64` ↔ qword, dword, long
+- `string` ↔ char, byte, text
+- `text` ↔ string, char, byte
+- `message` ↔ dword, qword, long
+- `signal` ↔ dword, qword, long
+- `struct/union/array` ↔ byte, char, byte[], char[]
+
 ## 函数统计
 
 - 4803 个主题 (HELP_EXTRACTED.json)
