@@ -26,6 +26,7 @@ const TYPE_MAP: Record<string, string[]> = {
     'struct': ['struct', 'byte', 'char', 'array', 'byte[]', 'char[]'],
     'union': ['union', 'byte', 'char', 'array', 'byte[]', 'char[]'],
     'array': ['array', 'byte', 'char', 'byte[]', 'char[]'],
+    'timer': ['timer', 'dword', 'long'],
 };
 
 const getExpectedTypes = (paramType: string): string[] => {
@@ -52,11 +53,11 @@ const getVariableType = (varName: string, document: vscode.TextDocument, current
     for (let i = 0; i < searchLimit; i++) {
         const line = lines[i].trim();
         
-        const funcMatch = line.match(/^(void|int|long|float|double|char|byte|word|dword|qword)\s+(\w+)\s*\(([^)]*)\)/i);
+        const funcMatch = line.match(/^(void|int|long|float|double|char|byte|word|dword|qword|timer)\s+(\w+)\s*\(([^)]*)\)/i);
         if (funcMatch) {
             const params = funcMatch[3].split(',');
             for (const p of params) {
-                const pm = p.match(/\b(dword|word|byte|int|long|float|double|qword|boolean|char)\s+(\w+)/i);
+                const pm = p.match(/\b(dword|word|byte|int|long|float|double|qword|boolean|timer|char)\s+(\w+)/i);
                 if (pm && pm[2].toLowerCase() === varName.toLowerCase()) {
                     return pm[1].toLowerCase();
                 }
@@ -64,11 +65,11 @@ const getVariableType = (varName: string, document: vscode.TextDocument, current
             continue;
         }
         
-        const varDecl = line.match(/^\s*(dword|word|byte|int|long|float|double|qword|boolean)\s+(\w+)\s*[=;,\[]/i);
+        const varDecl = line.match(/^\s*(dword|word|byte|int|long|float|double|qword|boolean|timer)\s+(\w+)\s*[=;,\[]/i);
         if (varDecl && varDecl[2].toLowerCase() === varName.toLowerCase()) {
             return varDecl[1].toLowerCase();
         }
-        const varAssign = line.match(/^\s*(dword|word|byte|int|long|float|double|qword|boolean)\s+(\w+)\s*=/i);
+        const varAssign = line.match(/^\s*(dword|word|byte|int|long|float|double|qword|boolean|timer)\s+(\w+)\s*=/i);
         if (varAssign && varAssign[2].toLowerCase() === varName.toLowerCase()) {
             return varAssign[1].toLowerCase();
         }
