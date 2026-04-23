@@ -81,74 +81,75 @@ const getVariableType = (varName, document, currentLine) => {
     const lines = text.split('\n');
     // Find current function/envent handler scope - search backwards from currentLine
     let funcStart = 0;
+    let isInFunction = false;
     for (let i = currentLine - 1; i >= 0; i--) {
         const line = lines[i].trim();
-        // Check for function or on handler start
         if (/^(void|int|long|float|double|char|byte|word|dword|qword|timer|mstimer|int64|string|text|message)\s+\w+\s*\(/.test(line) ||
             /^on\s+/.test(line)) {
             funcStart = i + 1;
-            break;
-        }
-        // Check for start of variables block
-        if (line === 'variables' || line === 'variables {') {
-            funcStart = i + 1;
+            isInFunction = true;
             break;
         }
     }
     let searchLimit = currentLine > 0 ? currentLine - 1 : lines.length;
-    // Only search from current function start
-    const scopeStart = funcStart;
-    for (let i = scopeStart - 1; i < searchLimit; i++) {
-        const line = lines[i].trim();
-        const funcMatch = line.match(/^(void|int|long|float|double|char|byte|word|dword|qword|timer|mstimer|int64|string|text|message)\s+(\w+)\s*\(([^)]*)\)/i);
-        if (funcMatch) {
-            const params = funcMatch[3].split(',');
-            for (const p of params) {
-                const pm = p.match(/\b(const\s+)?(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char|message|signal)\s+(\w+)/i);
-                if (pm && pm[3] && pm[3].toLowerCase() === varName.toLowerCase()) {
-                    return (pm[2] || 'dword').toLowerCase();
+    const scopeStart = funcStart > 0 ? funcStart : 0;
+    // Helper to search variables in a range
+    const searchInRange = (start, end) => {
+        for (let i = start; i < end; i++) {
+            const line = lines[i].trim();
+            // Function parameters (only if isInFunction)
+            if (isInFunction) {
+                const funcMatch = line.match(/^(void|int|long|float|double|char|byte|word|dword|qword|timer|mstimer|int64|string|text|message)\s+(\w+)\s*\(([^)]*)\)/i);
+                if (funcMatch) {
+                    const params = funcMatch[3].split(',');
+                    for (const p of params) {
+                        const pm = p.match(/\b(const\s+)?(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char|message|signal)\s+(\w+)/i);
+                        if (pm && pm[3] && pm[3].toLowerCase() === varName.toLowerCase()) {
+                            return (pm[2] || 'dword').toLowerCase();
+                        }
+                    }
                 }
             }
-            continue;
+            // pdu/message declarations
+            const msgDecl = line.match(/^\s*(pdu|message|ethernetPacket|flexraymessage|a664frame|a664message|linframe|pg)(?:\s+\w+)?(?:\s+0x[\da-fA-F]+)?\s*\*?\s*(\w+)\s*[;=,\[]/i);
+            if (msgDecl && msgDecl[2] && msgDecl[2].toLowerCase() === varName.toLowerCase()) {
+                return 'message';
+            }
+            // ethernetPacket flexraymessage etc without keyword
+            const implicitMsg = line.match(/^\s*(ethernetPacket|flexraymessage|a664frame|a664message|linframe|pg)\s+(\w+)\s*[;=,\[]/i);
+            if (implicitMsg && implicitMsg[2] && implicitMsg[2].toLowerCase() === varName.toLowerCase()) {
+                return 'message';
+            }
+            // for loop
+            const forDecl = line.match(/^\s*for\s*\(\s*(\w+(?:\[\])?)\s+(\w+)\s*:/i);
+            if (forDecl && forDecl[2] && forDecl[2].toLowerCase() === varName.toLowerCase()) {
+                return forDecl[1].replace('[]', '').toLowerCase();
+            }
+            // stack/queue
+            const stackDecl = line.match(/^\s*(const\s+)?stack\s+(\w+)\s+(\w+)\s*[;=,\[]/i);
+            if (stackDecl && stackDecl[3] && stackDecl[3].toLowerCase() === varName.toLowerCase()) {
+                return 'stack';
+            }
+            const queueDecl = line.match(/^\s*(const\s+)?queue\s+(\w+)\s+(\w+)\s*[;=,\[]/i);
+            if (queueDecl && queueDecl[3] && queueDecl[3].toLowerCase() === varName.toLowerCase()) {
+                return 'queue';
+            }
+            // basic types
+            const basicDecl = line.match(/^\s*(const\s+)?(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char)\s+(\w+)\s*[;=,\[]/i);
+            if (basicDecl && basicDecl[3] && basicDecl[3].toLowerCase() === varName.toLowerCase()) {
+                return (basicDecl[2] || 'dword').toLowerCase();
+            }
         }
-        // Support pdu and message declarations: pdu TypeName varName; or message 0x123 varName;
-        // Also support ethernetPacket, flexraymessage, a664frame, etc.
-        const msgDecl = line.match(/^\s*(pdu|message|ethernetPacket|flexraymessage|a664frame|a664message|linframe|pg)(?:\s+\w+)?(?:\s+0x[\da-fA-F]+)?\s*(\w+)\s*[;=,\[]/i);
-        if (msgDecl && msgDecl[2] && msgDecl[2].toLowerCase() === varName.toLowerCase()) {
-            return 'message';
-        }
-        // Also support just type name without the pdu/message keyword
-        const implicitMsg = line.match(/^\s*(ethernetPacket|flexraymessage|a664frame|a664message|linframe|pg)\s+(\w+)\s*[;=,\[]/i);
-        if (implicitMsg && implicitMsg[2] && implicitMsg[2].toLowerCase() === varName.toLowerCase()) {
-            return 'message';
-        }
-        // Support for loop: for(char[] aKey : arr) or for(int i = 0; i < n; i++)
-        const forDecl = line.match(/^\s*for\s*\(\s*(\w+(?:\[\])?)\s+(\w+)\s*:/i);
-        if (forDecl && forDecl[2] && forDecl[2].toLowerCase() === varName.toLowerCase()) {
-            const t = forDecl[1].toLowerCase();
-            return t.replace('[]', '');
-        }
-        // Support stack type: stack int myStack;
-        const stackDecl = line.match(/^\s*(const\s+)?stack\s+(\w+)\s+(\w+)\s*[;=,\[]/i);
-        if (stackDecl && stackDecl[3] && stackDecl[3].toLowerCase() === varName.toLowerCase()) {
-            return 'stack';
-        }
-        // Support queue type: queue int myQueue;
-        const queueDecl = line.match(/^\s*(const\s+)?queue\s+(\w+)\s+(\w+)\s*[;=,\[]/i);
-        if (queueDecl && queueDecl[3] && queueDecl[3].toLowerCase() === varName.toLowerCase()) {
-            return 'queue';
-        }
-        // Basic type declarations
-        const basicDecl = line.match(/^\s*(const\s+)?(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char)\s+(\w+)\s*[;=,\[]/i);
-        if (basicDecl && basicDecl[3] && basicDecl[3].toLowerCase() === varName.toLowerCase()) {
-            return (basicDecl[2] || 'dword').toLowerCase();
-        }
-        const basicAssign = line.match(/^\s*(const\s+)?(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char)\s+(\w+)\s*=/i);
-        if (basicAssign && basicAssign[3] && basicAssign[3].toLowerCase() === varName.toLowerCase()) {
-            return (basicAssign[2] || 'dword').toLowerCase();
-        }
+        return null;
+    };
+    // First search in function scope (if in function)
+    if (isInFunction) {
+        const result = searchInRange(funcStart, searchLimit);
+        if (result)
+            return result;
     }
-    return '';
+    // If not found in function (or not in function), search from line 0 to find globals
+    return searchInRange(0, lines.length) || '';
 };
 const getFunctionParams = (syntaxLine, argCount) => {
     const cleanSyntax = syntaxLine.replace(/.*Syntax:\s*/i, '');
@@ -231,10 +232,10 @@ const collectSymbols = (document) => {
             }
         }
         if (inVariablesBlock || braceCount > 0) {
-            const varMatch = trimmed.match(/^\s*(const\s+)?(dword|word|byte|int|long|float|double|msTimer|mstimer|timer|message|signal|envvar|qword)\s*(\*\s*)?(\w+)/);
+            const varMatch = trimmed.match(/^\s*(const\s+)?(dword|word|byte|int|long|float|double|msTimer|mstimer|timer|message|signal|envvar|qword)\s*\*?\s*(\w+)/);
             if (varMatch) {
                 symbols.push({
-                    name: varMatch[4],
+                    name: varMatch[3],
                     type: 'variable',
                     range: new vscode.Range(index, 0, index, line.length),
                     file: fileName
@@ -462,7 +463,7 @@ function activate(context) {
                 }
                 continue;
             }
-            const varMatch = trimmed.match(/\b(int|long|float|double|char|byte|word|dword|qword|boolean|timer|mstimer|message|signal|envvar)\s+(\w+)\s*[=;,\[]/);
+            const varMatch = trimmed.match(/\b(int|long|float|double|char|byte|word|dword|qword|boolean|timer|mstimer|message|signal|envvar)\s*\*?\s*(\w+)\s*[=;,\[]/);
             if (varMatch) {
                 const varName = varMatch[2];
                 if (!variables.includes(varName)) {
