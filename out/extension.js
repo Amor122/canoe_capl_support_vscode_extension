@@ -139,6 +139,16 @@ const getVariableType = (varName, document, currentLine) => {
             if (basicDecl && basicDecl[3] && basicDecl[3].toLowerCase() === varName.toLowerCase()) {
                 return (basicDecl[2] || 'dword').toLowerCase();
             }
+            // char array: char varname[size];
+            const charArrayMatch = line.match(/^\s*(const\s+)?char\s+(\w+)\s*\[\s*\d+\s*\]\s*[;=,\[]/i);
+            if (charArrayMatch && charArrayMatch[2] && charArrayMatch[2].toLowerCase() === varName.toLowerCase()) {
+                return 'char[]';
+            }
+            // struct type: struct StructName varname; or struct Namespace::StructName varname;
+            const structMatch = line.match(/^\s*(const\s+)?struct\s+[\w:]+\s+(\w+)\s*[;=,\[]/i);
+            if (structMatch && structMatch[2] && structMatch[2].toLowerCase() === varName.toLowerCase()) {
+                return 'struct';
+            }
         }
         return null;
     };
@@ -203,6 +213,16 @@ const searchIncludedFiles = (document, varName, visited = new Set()) => {
                     const queueDecl = line.match(/^\s*(const\s+)?queue\s+(\w+)\s+(\w+)\s*[;=,\[]/i);
                     if (queueDecl && queueDecl[3] && queueDecl[3].toLowerCase() === varName.toLowerCase()) {
                         return 'queue';
+                    }
+                    // char array: char varname[size];
+                    const charArrayMatch = line.match(/^\s*(const\s+)?char\s+(\w+)\s*\[\s*\d+\s*\]\s*[;=,\[]/i);
+                    if (charArrayMatch && charArrayMatch[2] && charArrayMatch[2].toLowerCase() === varName.toLowerCase()) {
+                        return 'char[]';
+                    }
+                    // struct type: struct StructName varname;
+                    const structMatch = line.match(/^\s*(const\s+)?struct\s+\w+\s+(\w+)\s*[;=,\[]/i);
+                    if (structMatch && structMatch[2] && structMatch[2].toLowerCase() === varName.toLowerCase()) {
+                        return 'struct';
                     }
                 }
                 // Recursively search in nested includes
@@ -368,6 +388,7 @@ const collectSymbols = (document) => {
             }
         }
         const funcMatch = trimmed.match(/^(void|int|long|float|double|char|byte|word|dword|qword|boolean)\s+(\w+)\s*\(/);
+        const funcNoTypeMatch = trimmed.match(/^(\w+)\s*\(/);
         if (funcMatch && !trimmed.includes('{')) {
             currentFunction = funcMatch[2];
             symbols.push({
@@ -389,10 +410,43 @@ const collectSymbols = (document) => {
                 }
             }
         }
+        else if (funcNoTypeMatch && !trimmed.includes('{') && !trimmed.match(/^\s*if|while|for|switch|else|case|return/)) {
+            const funcName = funcNoTypeMatch[1];
+            const validStartChars = ['_', '$'];
+            if (validStartChars.includes(funcName[0]) || funcName.match(/^(Test|test|A[0-9]|Check|Chk|Stm)/)) {
+                currentFunction = funcName;
+                symbols.push({
+                    name: funcName,
+                    type: 'function',
+                    range: new vscode.Range(index, 0, index, line.length),
+                    file: fileName
+                });
+            }
+        }
         const localVarMatch = trimmed.match(/^\s*(int|long|float|double|char|byte|word|dword|qword)\s+(\w+)\s*=/);
         if (localVarMatch && currentFunction) {
             symbols.push({
                 name: localVarMatch[2],
+                type: 'variable',
+                range: new vscode.Range(index, 0, index, line.length),
+                file: fileName + '|' + currentFunction
+            });
+        }
+        // char array: char varname[256];
+        const charArrayMatch = trimmed.match(/^\s*(const\s+)?char\s+(\w+)\s*\[\s*\d+\s*\]\s*[;=]/);
+        if (charArrayMatch && charArrayMatch[2] && currentFunction) {
+            symbols.push({
+                name: charArrayMatch[2],
+                type: 'variable',
+                range: new vscode.Range(index, 0, index, line.length),
+                file: fileName + '|' + currentFunction
+            });
+        }
+        // struct variable: struct StructName varname; or struct Namespace::StructName varname;
+        const structVarMatch = trimmed.match(/^\s*(const\s+)?struct\s+[\w:]+\s+(\w+)\s*[;=]/);
+        if (structVarMatch && structVarMatch[2] && currentFunction) {
+            symbols.push({
+                name: structVarMatch[2],
                 type: 'variable',
                 range: new vscode.Range(index, 0, index, line.length),
                 file: fileName + '|' + currentFunction
@@ -626,6 +680,15 @@ function activate(context) {
                 if (onMatch) {
                     insideFunc = 'on ' + onMatch[1];
                     break;
+                }
+                const noTypeFuncMatch = line.match(/^(\w+)\s*\(/);
+                if (noTypeFuncMatch) {
+                    const funcName = noTypeFuncMatch[1];
+                    const validStartChars = ['_', '$'];
+                    if (validStartChars.includes(funcName[0]) || funcName.match(/^(Test|test|A[0-9]|Check|Chk|Stm)/)) {
+                        insideFunc = funcName;
+                        break;
+                    }
                 }
             }
             const localSymbols = getDocumentSymbols(document);
