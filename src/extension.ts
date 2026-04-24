@@ -135,7 +135,81 @@ const getVariableType = (varName: string, document: vscode.TextDocument, current
     }
     
     // If not found in function (or not in function), search from line 0 to find globals
-    return searchInRange(0, lines.length) || '';
+    return searchInRange(0, lines.length) || searchIncludedFiles(document, varName) || '';
+};
+
+// Helper to search for symbols in included files (recursively)
+const searchIncludedFiles = (document: vscode.TextDocument, varName: string, visited: Set<string> = new Set()): string => {
+    const docPath = document.uri.fsPath;
+    const docDir = docPath.replace(/[/\\][^/\\]+$/, '');
+    const text = document.getText();
+    const lines = text.split('\n');
+    
+    // Find all included files
+    const includePaths: string[] = [];
+    for (const line of lines) {
+        const match = line.match(/#include\s*[<"]([^>"]+)[>"]/);
+        if (match) {
+            const incPath = match[1];
+            let fullPath: string;
+            if (incPath.startsWith('/') || (incPath.length > 1 && incPath[1] === ':')) {
+                fullPath = incPath;
+            } else {
+                fullPath = docDir + '/' + incPath;
+            }
+            if (!visited.has(fullPath)) {
+                includePaths.push(fullPath);
+            }
+        }
+    }
+    
+    // Search in each included file (recursively)
+    for (const incPath of includePaths) {
+        visited.add(incPath);
+        
+        try {
+            const incDoc = vscode.workspace.textDocuments.find(d => d.uri.fsPath === incPath);
+            if (incDoc) {
+                const incText = incDoc.getText();
+                const incLines = incText.split('\n');
+                
+                for (let i = 0; i < incLines.length; i++) {
+                    const line = incLines[i].trim();
+                    
+                    // Check for variable declarations
+                    const varMatch = line.match(/^\s*(const\s+)?(dword|word|byte|int|long|float|double|qword|boolean|timer|mstimer|int64|string|text|char)\s+(\w+)\s*[;=,\[]/i);
+                    if (varMatch && varMatch[3] && varMatch[3].toLowerCase() === varName.toLowerCase()) {
+                        return (varMatch[2] || 'dword').toLowerCase();
+                    }
+                    
+                    // Check for message declarations
+                    const msgDecl = line.match(/^\s*(pdu|message|ethernetPacket|flexraymessage|a664frame|a664message|linframe|pg)(?:\s+\w+)?(?:\s+0x[\da-fA-F]+)?\s*\*?\s*(\w+)\s*[;=,\[]/i);
+                    if (msgDecl && msgDecl[2] && msgDecl[2].toLowerCase() === varName.toLowerCase()) {
+                        return 'message';
+                    }
+                    
+                    // Check for stack/queue
+                    const stackDecl = line.match(/^\s*(const\s+)?stack\s+(\w+)\s+(\w+)\s*[;=,\[]/i);
+                    if (stackDecl && stackDecl[3] && stackDecl[3].toLowerCase() === varName.toLowerCase()) {
+                        return 'stack';
+                    }
+                    
+                    const queueDecl = line.match(/^\s*(const\s+)?queue\s+(\w+)\s+(\w+)\s*[;=,\[]/i);
+                    if (queueDecl && queueDecl[3] && queueDecl[3].toLowerCase() === varName.toLowerCase()) {
+                        return 'queue';
+                    }
+                }
+                
+                // Recursively search in nested includes
+                const nestedResult = searchIncludedFiles(incDoc, varName, visited);
+                if (nestedResult) return nestedResult;
+            }
+        } catch (e) {
+            // Skip if file cannot be read
+        }
+    }
+    
+    return '';
 };
 
 const getFunctionParams = (syntaxLine: string, argCount: number): string[] => {
@@ -601,6 +675,38 @@ const onMatch = line.match(/^on\s+(\w+)/);
                 }
             }
             
+            // Search in included files
+            const docDir = document.uri.fsPath.replace(/[/\\][^/\\]+$/, '');
+            const text = document.getText();
+            const lines = text.split('\n');
+            
+            for (const line of lines) {
+                const match = line.match(/#include\s*[<"]([^>"]+)[>"]/);
+                if (match) {
+                    const incPath = match[1];
+                    let fullPath: string;
+                    if (incPath.startsWith('/') || (incPath.length > 1 && incPath[1] === ':')) {
+                        fullPath = incPath;
+                    } else {
+                        fullPath = docDir + '/' + incPath;
+                    }
+                    
+                    try {
+                        const incDoc = vscode.workspace.textDocuments.find(d => d.uri.fsPath === fullPath);
+                        if (incDoc) {
+                            const incSymbols = getDocumentSymbols(incDoc);
+                            for (const sym of incSymbols) {
+                                if (sym.name.toLowerCase() === word.toLowerCase()) {
+                                    return new vscode.Location(incDoc.uri, sym.range);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // Skip
+                    }
+                }
+            }
+            
             return null;
         }
     });
@@ -1000,6 +1106,22 @@ const fullExp = params[i].trim();
                         const expTypes = getExpectedTypes(expTypeRaw);
                         // Skip checking for 'this' - it's a special reference in CAPL event handlers
                         if (arg.toLowerCase() === 'this') continue;
+                        
+                        // Skip checking for database objects (messages, nodes, PDUs) in function parameters
+                        // These are defined in database (DBC, LDF, etc.), not user variables
+                        // Check function name patterns that take database objects as parameters
+                        if (funcName.toLowerCase().startsWith('chkstart_') || 
+                            funcName.toLowerCase().startsWith('chkcreate_') ||
+                            funcName.toLowerCase().includes('inconsistent') ||
+                            funcName.toLowerCase().includes('msgdist') ||
+                            funcName.toLowerCase().includes('msgoccurrence') ||
+                            funcName.toLowerCase().includes('msgsignal') ||
+                            funcName.toLowerCase().includes('nodecycle') ||
+                            funcName.toLowerCase().includes('nodedead') ||
+                            funcName.toLowerCase().includes('nodebabbling')) {
+                            continue;
+                        }
+                        
                         if (/^[a-zA-Z_]\w*$/.test(arg)) {
                             const vType = getVariableType(arg, document, lineNum);
                             if (!vType) {

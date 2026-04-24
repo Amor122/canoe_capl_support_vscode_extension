@@ -58,6 +58,11 @@
         { "name": "keyword", "match": "\\bendif\\b" },
         { "name": "keyword", "match": "\\bstack\\b" },
         { "name": "keyword", "match": "\\bqueue\\b" },
+        { "name": "keyword", "match": "\\bexport\\b" },
+        { "name": "keyword", "match": "\\btestcase\\b" },
+        { "name": "keyword", "match": "\\btestfunction\\b" },
+        { "name": "keyword", "match": "\\btestsequence\\b" },
+        { "name": "keyword", "match": "\\bprevoid\\b" },
         { "name": "keyword", "match": "(?<!@)\\bthis(?=\\b|\\s|\\.)" }
       ]
     },
